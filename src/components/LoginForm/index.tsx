@@ -27,7 +27,7 @@ export default function LoginForm(): JSX.Element {
 
     // --- Authentication Logic (Replace with your actual API call) ---
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -36,7 +36,7 @@ export default function LoginForm(): JSX.Element {
       });
 
       if (response.ok) {
-        router.push("/dashboard");
+        router.push("/");
       } else {
         const errorData = await response.json();
         setError(

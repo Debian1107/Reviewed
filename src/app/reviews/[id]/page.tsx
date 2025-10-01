@@ -1,0 +1,456 @@
+// app/reviews/[id]/page.tsx
+"use client";
+
+import { useState, FormEvent } from "react";
+import {
+  Star,
+  MessageCircle,
+  User,
+  Zap,
+  Clock,
+  ThumbsUp,
+  Trash2,
+  Send,
+} from "lucide-react";
+import Image from "next/image";
+import { JSX } from "react";
+import Link from "next/link";
+
+// --- MOCK DATA ---
+// Data for the specific product being reviewed
+interface ProductData {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  overallRating: number;
+  totalReviews: number;
+  imageUrl: string;
+  ratingBreakdown: { rating: number; count: number }[];
+}
+
+// Data for individual user comments/reviews
+interface Comment {
+  id: number;
+  userId: string;
+  userName: string;
+  rating: number;
+  title: string;
+  content: string;
+  timestamp: string;
+  likes: number;
+  replies: Comment[];
+}
+
+const MOCK_PRODUCT: ProductData = {
+  id: "iphone-17-pro",
+  name: "iPhone 17 Pro Max",
+  category: "Tech & Gadgets",
+  description:
+    "The latest flagship mobile device from Apple, featuring a 5x periscope lens and an A18 Bionic chip.",
+  overallRating: 4.6,
+  totalReviews: 1245,
+  imageUrl: "/images/iphone-placeholder.jpg", // Placeholder for Image path
+  ratingBreakdown: [
+    { rating: 5, count: 800 },
+    { rating: 4, count: 300 },
+    { rating: 3, count: 100 },
+    { rating: 2, count: 30 },
+    { rating: 1, count: 15 },
+  ],
+};
+
+const MOCK_COMMENTS: Comment[] = [
+  {
+    id: 1,
+    userId: "user1",
+    userName: "TechGuru_78",
+    rating: 5,
+    title: "Best in Class!",
+    content:
+      "Absolutely phenomenal performance. The new display is brighter than anything on the market. Worth the upgrade!",
+    timestamp: "2025-10-01T10:00:00Z",
+    likes: 45,
+    replies: [
+      {
+        id: 11,
+        userId: "user3",
+        userName: "AppFanatic",
+        rating: 0,
+        title: "",
+        content: "Agreed! But the battery life is the real silent winner here.",
+        timestamp: "2025-10-01T12:30:00Z",
+        likes: 5,
+        replies: [],
+      },
+    ],
+  },
+  {
+    id: 2,
+    userId: "user2",
+    userName: "CameraCritic",
+    rating: 3,
+    title: "Disappointed with the Software",
+    content:
+      "While the hardware is great, the camera software is buggy, and the color processing is too warm. A major letdown for a Pro device.",
+    timestamp: "2025-09-30T15:45:00Z",
+    likes: 12,
+    replies: [],
+  },
+];
+
+// --- COMPONENTS ---
+const RatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
+  <div className="flex items-center space-x-1">
+    {[1, 2, 3, 4, 5].map((star) => (
+      <Star
+        key={star}
+        className={`w-4 h-4 ${
+          rating >= star ? "text-yellow-500 fill-current" : "text-gray-300"
+        }`}
+      />
+    ))}
+    <span className="ml-1 text-sm font-semibold text-gray-700">{rating}.0</span>
+  </div>
+);
+
+// 1. Full Star Rating Display
+const FullRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
+  <div className="flex items-center space-x-1">
+    {[1, 2, 3, 4, 5].map((star) => (
+      <Star
+        key={star}
+        className={`w-6 h-6 ${
+          rating >= star ? "text-yellow-500 fill-current" : "text-gray-300"
+        }`}
+      />
+    ))}
+    <span className="ml-2 text-2xl font-bold text-gray-900">
+      {rating.toFixed(1)}
+    </span>
+  </div>
+);
+
+// 2. Individual Comment/Review Component
+interface CommentProps {
+  comment: Comment;
+  isReply?: boolean;
+  onCommentAdded: (parentId: number | undefined, content: string) => void;
+}
+
+const CommentItem: React.FC<CommentProps> = ({
+  comment,
+  isReply = false,
+  onCommentAdded,
+}) => {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyContent, setReplyContent] = useState("");
+
+  // Placeholder function for handling like/delete
+  const handleAction = (action: string) => {
+    console.log(`${action} clicked for comment ${comment.id}`);
+  };
+
+  const handleReplySubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (replyContent.trim()) {
+      onCommentAdded(comment.id, replyContent);
+      setReplyContent("");
+      setIsReplying(false);
+    }
+  };
+
+  return (
+    <div
+      className={`p-5 rounded-xl ${
+        isReply
+          ? "bg-gray-50 border border-gray-100 mt-3"
+          : "bg-white border border-gray-200 shadow-md"
+      }`}
+    >
+      <div className="flex items-center space-x-3 mb-3">
+        <User
+          className={`w-8 h-8 rounded-full ${
+            isReply ? "text-gray-500" : "text-emerald-600"
+          }`}
+        />
+        <div>
+          <p className="font-semibold text-gray-900">{comment.userName}</p>
+          <p className="text-xs text-gray-500 flex items-center">
+            <Clock className="w-3 h-3 mr-1" />
+            {new Date(comment.timestamp).toLocaleDateString()}
+          </p>
+        </div>
+        {comment.rating > 0 && <RatingDisplay rating={comment.rating} />}
+      </div>
+
+      {comment.title && (
+        <h4 className="text-lg font-bold text-gray-900 mb-2">
+          {comment.title}
+        </h4>
+      )}
+      <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+
+      <div
+        className={`mt-4 pt-3 flex items-center space-x-4 ${
+          isReply ? "border-t border-gray-200" : ""
+        }`}
+      >
+        <button
+          onClick={() => handleAction("like")}
+          className="flex items-center text-sm text-emerald-600 hover:text-emerald-700 transition"
+        >
+          <ThumbsUp className="w-4 h-4 mr-1" /> {comment.likes}
+        </button>
+        <button
+          onClick={() => setIsReplying(!isReplying)}
+          className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition"
+        >
+          <MessageCircle className="w-4 h-4 mr-1" /> Reply
+        </button>
+        {/* Optional: Delete button shown only for the user's own comments */}
+        {/* <button onClick={() => handleAction('delete')} className="flex items-center text-sm text-red-500 hover:text-red-700 transition ml-auto">
+                    <Trash2 className="w-4 h-4 mr-1" />
+                </button> */}
+      </div>
+
+      {/* Reply Form */}
+      {isReplying && (
+        <AddCommentForm
+          parentId={comment.id}
+          isReplyForm={true}
+          onCommentAdded={onCommentAdded}
+        />
+      )}
+
+      {/* Display Replies */}
+      {comment.replies.length > 0 && (
+        <div className="ml-6 border-l pl-4 border-gray-300 mt-4 space-y-3">
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              isReply={true}
+              onCommentAdded={onCommentAdded}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 3. Add Comment Form Component (for main reviews and replies)
+interface AddCommentFormProps {
+  parentId?: number;
+  isReplyForm?: boolean;
+  onCommentAdded: (parentId: number | undefined, content: string) => void;
+}
+
+const AddCommentForm: React.FC<AddCommentFormProps> = ({
+  parentId,
+  isReplyForm = false,
+  onCommentAdded,
+}) => {
+  const [content, setContent] = useState("");
+  const isLoggedIn = true; // Replace with actual auth check
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (content.trim()) {
+      onCommentAdded(parentId, content);
+      setContent("");
+    }
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div
+        className={`p-5 mt-6 border-2 border-dashed border-gray-200 rounded-xl text-center ${
+          isReplyForm ? "mt-3 bg-white" : "bg-gray-50"
+        }`}
+      >
+        <p className="text-gray-600">
+          Please{" "}
+          <Link
+            href="/login"
+            className="text-emerald-600 font-semibold hover:underline"
+          >
+            log in
+          </Link>{" "}
+          to add a comment or reply.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className={`mt-6 ${
+        isReplyForm
+          ? "p-3 bg-white rounded-lg shadow-inner"
+          : "p-6 bg-gray-50 rounded-xl shadow-inner"
+      }`}
+    >
+      <h4 className="font-semibold text-gray-800 mb-2">
+        {isReplyForm ? "Add your reply" : "Add Your Review/Comment"}
+      </h4>
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        rows={isReplyForm ? 2 : 3}
+        required
+        className="w-full p-3 border border-gray-300 rounded-lg text-gray-800 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+        placeholder={
+          isReplyForm
+            ? "Write your reply here..."
+            : "Share your full opinion on this product..."
+        }
+      />
+      <button
+        type="submit"
+        className="mt-3 px-5 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
+      >
+        <Send className="w-4 h-4 mr-1" /> Post{" "}
+        {isReplyForm ? "Reply" : "Comment"}
+      </button>
+    </form>
+  );
+};
+
+// 4. Main Page Component
+export default function ReviewDetailPage({
+  params,
+}: {
+  params: { id: string };
+}): JSX.Element {
+  const product = MOCK_PRODUCT; // Fetched using params.id
+  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
+
+  // Dynamic function to handle adding a new comment or reply
+  const handleNewComment = (parentId: number | undefined, content: string) => {
+    const newComment: Comment = {
+      id: Date.now(),
+      userId: "currentUser", // Replace with actual logged-in user
+      userName: "LoggedInUser",
+      rating: parentId ? 0 : 4, // Only main comments get a rating here for simplicity
+      title: parentId ? "" : "Quick Comment",
+      content: content,
+      timestamp: new Date().toISOString(),
+      likes: 0,
+      replies: [],
+    };
+
+    setComments((prevComments) => {
+      if (parentId) {
+        // Handle reply
+        return prevComments.map((c) => {
+          if (c.id === parentId) {
+            return { ...c, replies: [...c.replies, newComment] };
+          }
+          return c;
+        });
+      } else {
+        // Handle new main comment
+        return [newComment, ...prevComments];
+      }
+    });
+  };
+
+  const getRatingBarWidth = (count: number) => {
+    const maxCount = Math.max(...product.ratingBreakdown.map((b) => b.count));
+    return `${(count / maxCount) * 100}%`;
+  };
+
+  return (
+    <div className="bg-gray-50 py-12 md:py-16 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* --- 1. PRODUCT HEADER & STATS --- */}
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 mb-10">
+          <div className="lg:flex lg:space-x-8">
+            {/* Product Image */}
+            <div className="flex-shrink-0 mb-6 lg:mb-0">
+              <Image
+                src={product.imageUrl}
+                alt={product.name}
+                width={200}
+                height={200}
+                className="rounded-xl object-cover shadow-lg"
+              />
+            </div>
+
+            {/* Product Details */}
+            <div className="flex-grow">
+              <p className="text-sm font-semibold text-emerald-600 uppercase tracking-widest mb-1">
+                {product.category}
+              </p>
+              <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
+                {product.name}
+              </h1>
+              <p className="text-gray-600 mb-4">{product.description}</p>
+
+              {/* Overall Rating Score */}
+              <div className="flex items-center space-x-4 border-t pt-4 border-gray-100">
+                <FullRatingDisplay rating={product.overallRating} />
+                <span className="text-lg text-gray-700">
+                  Based on **{product.totalReviews.toLocaleString()}** Reviews
+                </span>
+              </div>
+            </div>
+
+            {/* Rating Breakdown */}
+            <div className="w-full lg:w-72 flex-shrink-0 mt-8 lg:mt-0">
+              {product.ratingBreakdown.map((breakdown) => (
+                <div key={breakdown.rating} className="flex items-center mb-1">
+                  <span className="text-sm font-medium w-4 mr-2">
+                    {breakdown.rating}
+                  </span>
+                  <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 ml-2">
+                    <div
+                      className="bg-emerald-600 h-2.5 rounded-full"
+                      style={{ width: getRatingBarWidth(breakdown.count) }}
+                    ></div>
+                  </div>
+                  <span className="text-xs text-gray-500 ml-2 w-10 text-right">
+                    {breakdown.count.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* --- 2. USER REVIEWS / COMMENTS SECTION --- */}
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+            <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
+            User Comments ({comments.length})
+          </h2>
+
+          {/* Form to Add New Comment (Main Level) */}
+          <AddCommentForm onCommentAdded={handleNewComment} />
+
+          {/* List of Comments */}
+          <div className="mt-8 space-y-6">
+            {comments.map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                onCommentAdded={handleNewComment}
+              />
+            ))}
+            {comments.length === 0 && (
+              <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
+                <p className="text-lg">
+                  No comments yet. Be the first to share your experience!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

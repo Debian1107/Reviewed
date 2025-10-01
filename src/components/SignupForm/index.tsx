@@ -43,7 +43,7 @@ export default function SignupForm(): JSX.Element {
 
     // --- Signup Logic (Replace with your actual API call) ---
     try {
-      const response = await fetch("/api/signup", {
+      const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
