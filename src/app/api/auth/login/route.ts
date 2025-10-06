@@ -6,10 +6,28 @@ import User from "@/models/User";
 import dbConnect from "@/lib/mongodb";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
+await dbConnect();
+
+export async function checkUserLoggedIn(email: string, password: string) {
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("No user found");
+      return null;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash || "");
+    if (!isMatch) {
+      console.log("Password does not match");
+      return null;
+    }
+    return { id: user._id, name: user.name, email: user.email };
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 export async function POST(req: Request) {
-  await dbConnect();
-
   try {
     const body = await req.json();
     const { email, password } = body;

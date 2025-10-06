@@ -4,6 +4,7 @@
 import { useState, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { JSX } from "react";
+import { signIn } from "next-auth/react";
 
 export default function LoginForm(): JSX.Element {
   // Explicitly typing the state variables
@@ -27,13 +28,13 @@ export default function LoginForm(): JSX.Element {
 
     // --- Authentication Logic (Replace with your actual API call) ---
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await signIn("credentials", {
+        redirect: false, // prevent full page reload
+        email,
+        password,
       });
+
+      console.log("Response status:", response);
 
       if (response.ok) {
         router.push("/");
