@@ -1,7 +1,7 @@
 // app/products/page.tsx
 "use client";
 
-import { useState, useMemo, ChangeEvent, FormEvent } from "react";
+import { useState, useMemo, ChangeEvent, FormEvent, useEffect } from "react";
 import {
   Search,
   Zap,
@@ -11,8 +11,10 @@ import {
   Truck,
   ListFilter,
   Star,
+  PlusCircle, // Added for the new card
 } from "lucide-react";
 import Link from "next/link";
+import { useItemStore } from "@/utils/store";
 
 // --- MOCK DATA ---
 interface Item {
@@ -143,6 +145,9 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState<
     "latest" | "highest_rating" | "most_reviews"
   >("most_reviews");
+  const { items, fetchItems, isLoading } = useItemStore();
+
+  // console.log("this is the items ", items);
 
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -155,7 +160,7 @@ export default function ProductsPage() {
 
   // --- FILTERING AND SORTING LOGIC ---
   const filteredAndSortedItems = useMemo(() => {
-    let results = MOCK_ITEMS;
+    let results = items;
 
     // 1. Filter by Category
     if (selectedCategory !== "all") {
@@ -185,10 +190,53 @@ export default function ProductsPage() {
     });
 
     return results;
-  }, [selectedCategory, searchTerm, sortBy]);
+  }, [selectedCategory, searchTerm, sortBy, items]);
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  // useEffect(() => {}, [items]);
+
+  console.log(items);
+  // ... inside ProductsPage() return ...
+
+  // Display a loading indicator while fetching
+  if (isLoading) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center p-10 bg-white rounded-xl shadow-lg">
+          <svg
+            className="animate-spin h-8 w-8 text-emerald-500 mx-auto mb-3"
+            viewBox="0 0 24 24"
+          >
+            {/* Spinner SVG path */}
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <p className="text-lg font-medium text-gray-700">
+            Loading reviewable items...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ... rest of the render logic (after the loading check)
 
   return (
-    <div className="bg-gray-500 h-full">
+    <div className="bg-gray-50 h-full py-16">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title Section */}
         <div className="mb-10 text-center">
@@ -274,15 +322,33 @@ export default function ProductsPage() {
               <ItemCard key={item.id} item={item} />
             ))
           ) : (
-            <div className="col-span-full p-10 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
-              <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-xl font-medium">
-                We couldn&pos;t find any items matching your search.
-              </p>
-              <p className="text-sm mt-2">
-                Try a broader search term or select All Items to browse.
-              </p>
-            </div>
+            // --- UPDATED: No Results & Suggest Item Section ---
+            <>
+              <div className="col-span-full p-10 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
+                <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-xl font-medium">
+                  We couldn&apos;t find any items matching your search.
+                </p>
+                <p className="text-sm mt-2">
+                  Try a broader search term or select All Items to browse.
+                </p>
+              </div>
+
+              {/* --- NEW CARD: Suggest Item for Review --- */}
+              <Link
+                href="/suggest-item" // Assuming a route for suggestions
+                className="col-span-full lg:col-span-2 xl:col-span-4 p-8 text-center bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-xl hover:bg-emerald-100 transition duration-300 flex flex-col items-center justify-center shadow-inner"
+              >
+                <PlusCircle className="w-10 h-10 mb-3 text-emerald-600" />
+                <p className="text-xl font-bold text-emerald-800 mb-1">
+                  Item Not Found? Add It for Review!
+                </p>
+                <p className="text-md text-emerald-600 font-medium">
+                  Click here to suggest a new product, service, or place to our
+                  index.
+                </p>
+              </Link>
+            </>
           )}
         </div>
       </div>

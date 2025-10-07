@@ -25,12 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} h-full `}>
+      <body className={`${geistSans.variable} ${geistMono.variable} `}>
         <NextAuthProvider>
           <Navbar />
           {children}
         </NextAuthProvider>
-        ;
       </body>
     </html>
   );

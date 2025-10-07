@@ -1,7 +1,7 @@
 // app/reviews/[id]/page.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import {
   Star,
   MessageCircle,
@@ -15,6 +15,7 @@ import {
 import Image from "next/image";
 import { JSX } from "react";
 import Link from "next/link";
+import { useItemStore } from "@/utils/store";
 
 // --- MOCK DATA ---
 // Data for the specific product being reviewed
@@ -60,44 +61,46 @@ const MOCK_PRODUCT: ProductData = {
   ],
 };
 
-const MOCK_COMMENTS: Comment[] = [
-  {
-    id: 1,
-    userId: "user1",
-    userName: "TechGuru_78",
-    rating: 5,
-    title: "Best in Class!",
-    content:
-      "Absolutely phenomenal performance. The new display is brighter than anything on the market. Worth the upgrade!",
-    timestamp: "2025-10-01T10:00:00Z",
-    likes: 45,
-    replies: [
-      {
-        id: 11,
-        userId: "user3",
-        userName: "AppFanatic",
-        rating: 0,
-        title: "",
-        content: "Agreed! But the battery life is the real silent winner here.",
-        timestamp: "2025-10-01T12:30:00Z",
-        likes: 5,
-        replies: [],
-      },
-    ],
-  },
-  {
-    id: 2,
-    userId: "user2",
-    userName: "CameraCritic",
-    rating: 3,
-    title: "Disappointed with the Software",
-    content:
-      "While the hardware is great, the camera software is buggy, and the color processing is too warm. A major letdown for a Pro device.",
-    timestamp: "2025-09-30T15:45:00Z",
-    likes: 12,
-    replies: [],
-  },
-];
+// const MOCK_COMMENTS: Comment[] = [
+//   {
+//     id: 1,
+//     userId: "user1",
+//     userName: "TechGuru_78",
+//     rating: 5,
+//     title: "Best in Class!",
+//     content:
+//       "Absolutely phenomenal performance. The new display is brighter than anything on the market. Worth the upgrade!",
+//     timestamp: "2025-10-01T10:00:00Z",
+//     likes: 45,
+//     replies: [
+//       {
+//         id: 11,
+//         userId: "user3",
+//         userName: "AppFanatic",
+//         rating: 0,
+//         title: "",
+//         content: "Agreed! But the battery life is the real silent winner here.",
+//         timestamp: "2025-10-01T12:30:00Z",
+//         likes: 5,
+//         replies: [],
+//       },
+//     ],
+//   },
+//   {
+//     id: 2,
+//     userId: "user2",
+//     userName: "CameraCritic",
+//     rating: 3,
+//     title: "Disappointed with the Software",
+//     content:
+//       "While the hardware is great, the camera software is buggy, and the color processing is too warm. A major letdown for a Pro device.",
+//     timestamp: "2025-09-30T15:45:00Z",
+//     likes: 12,
+//     replies: [],
+//   },
+// ];
+
+const MOCK_COMMENTS: Comment[] = [];
 
 // --- COMPONENTS ---
 const RatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
@@ -126,7 +129,7 @@ const FullRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
       />
     ))}
     <span className="ml-2 text-2xl font-bold text-gray-900">
-      {rating.toFixed(1)}
+      {rating?.toFixed(1)}
     </span>
   </div>
 );
@@ -325,8 +328,10 @@ export default function ReviewDetailPage({
 }: {
   params: { id: string };
 }): JSX.Element {
-  const product = MOCK_PRODUCT; // Fetched using params.id
+  // const product = MOCK_PRODUCT; // Fetched using params.id
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
+  const [product, setProduct] = useState<ProductData>();
+  const { getSingleItem } = useItemStore();
 
   // Dynamic function to handle adding a new comment or reply
   const handleNewComment = (parentId: number | undefined, content: string) => {
@@ -363,94 +368,110 @@ export default function ReviewDetailPage({
     return `${(count / maxCount) * 100}%`;
   };
 
+  useEffect(() => {
+    const fetchSingleProd = async () => {
+      const { id } = await params; // ✅ unwrap it
+      const data: ProductData = await getSingleItem(id);
+      setProduct(data);
+    };
+    fetchSingleProd();
+  }, []);
+  console.log("this si the prod ", product);
+
   return (
     <div className="bg-gray-50 py-12 md:py-16 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* --- 1. PRODUCT HEADER & STATS --- */}
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 mb-10">
-          <div className="lg:flex lg:space-x-8">
-            {/* Product Image */}
-            <div className="flex-shrink-0 mb-6 lg:mb-0">
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                width={200}
-                height={200}
-                className="rounded-xl object-cover shadow-lg"
-              />
-            </div>
-
-            {/* Product Details */}
-            <div className="flex-grow">
-              <p className="text-sm font-semibold text-emerald-600 uppercase tracking-widest mb-1">
-                {product.category}
-              </p>
-              <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
-                {product.name}
-              </h1>
-              <p className="text-gray-600 mb-4">{product.description}</p>
-
-              {/* Overall Rating Score */}
-              <div className="flex items-center space-x-4 border-t pt-4 border-gray-100">
-                <FullRatingDisplay rating={product.overallRating} />
-                <span className="text-lg text-gray-700">
-                  Based on **{product.totalReviews.toLocaleString()}** Reviews
-                </span>
+      {product && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* --- 1. PRODUCT HEADER & STATS --- */}
+          <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 mb-10">
+            <div className="lg:flex lg:space-x-8">
+              {/* Product Image */}
+              <div className="flex-shrink-0 mb-6 lg:mb-0">
+                <Image
+                  src={product?.imageUrl || "/img/pog.jpg"}
+                  alt={product.name}
+                  width={200}
+                  height={200}
+                  className="rounded-xl object-cover shadow-lg"
+                />
               </div>
-            </div>
 
-            {/* Rating Breakdown */}
-            <div className="w-full lg:w-72 flex-shrink-0 mt-8 lg:mt-0">
-              {product.ratingBreakdown.map((breakdown) => (
-                <div key={breakdown.rating} className="flex items-center mb-1">
-                  <span className="text-sm font-medium w-4 mr-2">
-                    {breakdown.rating}
-                  </span>
-                  <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 ml-2">
-                    <div
-                      className="bg-emerald-600 h-2.5 rounded-full"
-                      style={{ width: getRatingBarWidth(breakdown.count) }}
-                    ></div>
-                  </div>
-                  <span className="text-xs text-gray-500 ml-2 w-10 text-right">
-                    {breakdown.count.toLocaleString()}
+              {/* Product Details */}
+              <div className="flex-grow">
+                <p className="text-sm font-semibold text-emerald-600 uppercase tracking-widest mb-1">
+                  {product.category}
+                </p>
+                <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
+                  {product?.name}
+                </h1>
+                <p className="text-gray-600 mb-4">{product.description}</p>
+
+                {/* Overall Rating Score */}
+                <div className="flex items-center space-x-4 border-t pt-4 border-gray-100">
+                  <FullRatingDisplay rating={product.overallRating} />
+                  <span className="text-lg text-gray-700">
+                    Based on **{product?.totalReviews?.toLocaleString() || 0}**
+                    Reviews
                   </span>
                 </div>
+              </div>
+
+              {/* Rating Breakdown */}
+              <div className="w-full lg:w-72 flex-shrink-0 mt-8 lg:mt-0">
+                {product?.ratingBreakdown?.map((breakdown) => (
+                  <div
+                    key={breakdown.rating}
+                    className="flex items-center mb-1"
+                  >
+                    <span className="text-sm font-medium w-4 mr-2">
+                      {breakdown.rating}
+                    </span>
+                    <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 ml-2">
+                      <div
+                        className="bg-emerald-600 h-2.5 rounded-full"
+                        style={{ width: getRatingBarWidth(breakdown.count) }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-500 ml-2 w-10 text-right">
+                      {breakdown.count.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* --- 2. USER REVIEWS / COMMENTS SECTION --- */}
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+              <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
+              User Comments ({comments.length})
+            </h2>
+
+            {/* Form to Add New Comment (Main Level) */}
+            <AddCommentForm onCommentAdded={handleNewComment} />
+
+            {/* List of Comments */}
+            <div className="mt-8 space-y-6">
+              {comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  onCommentAdded={handleNewComment}
+                />
               ))}
+              {comments.length === 0 && (
+                <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
+                  <p className="text-lg">
+                    No comments yet. Be the first to share your experience!
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* --- 2. USER REVIEWS / COMMENTS SECTION --- */}
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
-            <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
-            User Comments ({comments.length})
-          </h2>
-
-          {/* Form to Add New Comment (Main Level) */}
-          <AddCommentForm onCommentAdded={handleNewComment} />
-
-          {/* List of Comments */}
-          <div className="mt-8 space-y-6">
-            {comments.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                onCommentAdded={handleNewComment}
-              />
-            ))}
-            {comments.length === 0 && (
-              <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
-                <p className="text-lg">
-                  No comments yet. Be the first to share your experience!
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

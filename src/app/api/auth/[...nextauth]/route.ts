@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
-      console.log("🟢 JWT callback before:", token, user);
+      // console.log("🟢 JWT callback before:", token, user);
       // When user logs in for the first time
       if (user) {
         token.id = user.id;
