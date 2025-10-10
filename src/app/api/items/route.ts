@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Item from "@/models/Item"; // Import IItem and Item model
+import Review from "@/models/Review";
 import dbConnect from "@/lib/mongodb"; // your db connection file
+import mongoose from "mongoose";
 
 // Ensure the database connection is established at the module level (Next.js Edge) or in the handler.
 // We'll keep it in the handler for robustness.
@@ -48,7 +50,81 @@ export async function GET(request: Request) {
     if (search) {
       itemsList = searchItem(search);
     } else if (itemid) {
-      itemsList = await Item.find({ id: itemid });
+      const item = await Item.findOne({ id: itemid }).lean();
+      if (!item) {
+        return new Response(JSON.stringify({ error: "Item not found" }), {
+          status: 404,
+        });
+      }
+      // 2) Make sure we have an ObjectId to match against Review.itemId
+      const itemObjectId =
+        item._id instanceof mongoose.Types.ObjectId
+          ? item._id
+          : new mongoose.Types.ObjectId(item._id);
+
+      const reviewStats = await Review.aggregate([
+        { $match: { itemId: itemObjectId } },
+        {
+          $facet: {
+            // 1️⃣ Summary info (average + count)
+            summary: [
+              {
+                $group: {
+                  _id: "$itemId",
+                  averageRating: { $avg: "$rating" },
+                  totalReviews: { $sum: 1 },
+                },
+              },
+            ],
+            // 2️⃣ Breakdown info (count of each rating)
+            breakdown: [
+              {
+                $group: {
+                  _id: "$rating",
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { _id: -1 } }, // highest rating first (5 → 1)
+            ],
+          },
+        },
+        {
+          $project: {
+            summary: { $arrayElemAt: ["$summary", 0] },
+            breakdown: 1,
+          },
+        },
+      ]);
+
+      // const item = await Item.findOne({ id: itemid }).lean();
+
+      const summary = reviewStats[0]?.summary || {
+        averageRating: 0,
+        totalReviews: 0,
+      };
+      const breakdown = reviewStats[0]?.breakdown || [];
+
+      // Fill in missing ratings (0–5) with zero counts
+      const ratingBreakdown = Array.from({ length: 6 }, (_, i) => {
+        const found = breakdown.find((b) => b._id === i);
+        return { rating: i, count: found ? found.count : 0 };
+      }).reverse(); // optional → order 5 → 0
+
+      if (!item) throw new Error("Item not found");
+
+      itemsList = {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        overallRating: Number(summary.averageRating?.toFixed(1)) || 0,
+        totalReviews: summary.totalReviews || 0,
+        ratingBreakdown,
+      };
+      console.log("itemsList", itemsList);
     } else {
       itemsList = await Item.find();
     }

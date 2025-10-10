@@ -147,7 +147,7 @@ export default function ProductsPage() {
   >("most_reviews");
   const { items, fetchItems, isLoading } = useItemStore();
 
-  // console.log("this is the items ", items);
+  console.log("this is the items ", items);
 
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);

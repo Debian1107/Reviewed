@@ -1,18 +1,38 @@
 import { NextResponse } from "next/server";
 // import mongoose from "mongoose";
 import Review from "@/models/Review"; // adjust path
+import Like from "@/models/Like";
 import "@/lib/mongodb"; // your db connection file
 import dbConnect from "@/lib/mongodb";
+import Item from "@/models/Item";
 await dbConnect();
 
 // GET /api/reviews
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Fetch all reviews with user details
-    const reviews = await Review.find()
-      .populate("user", "name email") // populate user fields
-      .populate("likes") // populate likes if needed
-      .sort({ createdAt: -1 }); // latest first
+    const { searchParams } = new URL(request.url);
+    const itemid: string | null = searchParams.get("id");
+    if (!itemid) {
+      return NextResponse.json(
+        { success: false, message: "Missing itemid parameter." },
+        { status: 400 }
+      );
+    }
+    const itemIdData = await Item.findOne({ id: itemid });
+    if (!itemIdData) {
+      return NextResponse.json(
+        { success: false, message: "Invalid itemId: No item found." },
+        { status: 400 }
+      );
+    }
+
+    const reviews = await Review.find({ itemId: itemIdData })
+      .populate("user", "name ") // populate user fields
+      .sort({
+        createdAt: -1,
+      });
+    // .populate("likes") // populate likes if needed
 
     return NextResponse.json({ success: true, data: reviews });
   } catch (error) {
@@ -44,12 +64,26 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    // Additional validation for itemid
+    const itemIdData = await Item.findOne({ id: itemId });
+
+    if (!itemIdData || (itemIdData && itemIdData.category !== category)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: !itemIdData
+            ? "Invalid itemId: No item found with the provided ID."
+            : "Item category does not match the provided category.",
+        },
+        { status: 400 }
+      );
+    }
 
     // Create the new review
     const newReview = await Review.create({
       user,
       category,
-      itemId,
+      itemId: itemIdData._id, // Store the ObjectId reference
       content,
       title,
       rating,
@@ -76,7 +110,7 @@ export async function POST(request: Request) {
     //     { status: 400 }
     //   );
     // }
-    console.error("Error creating review:", error);
+    console.log("Error creating review:", error);
     return NextResponse.json(
       { success: false, message: "Failed to create review." },
       { status: 500 }

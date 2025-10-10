@@ -2,64 +2,36 @@
 "use client";
 
 import { useState, FormEvent, useEffect } from "react";
-import {
-  Star,
-  MessageCircle,
-  User,
-  Zap,
-  Clock,
-  ThumbsUp,
-  Trash2,
-  Send,
-} from "lucide-react";
+import { Star, MessageCircle, User, Clock, ThumbsUp, Send } from "lucide-react";
 import Image from "next/image";
 import { JSX } from "react";
 import Link from "next/link";
-import { useItemStore } from "@/utils/store";
+import { useRouter } from "next/navigation";
+import { useItemStore, useReviewStore } from "@/utils/store";
+import { Comment, ProductData } from "@/types/global";
 
 // --- MOCK DATA ---
 // Data for the specific product being reviewed
-interface ProductData {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  overallRating: number;
-  totalReviews: number;
-  imageUrl: string;
-  ratingBreakdown: { rating: number; count: number }[];
-}
 
 // Data for individual user comments/reviews
-interface Comment {
-  id: number;
-  userId: string;
-  userName: string;
-  rating: number;
-  title: string;
-  content: string;
-  timestamp: string;
-  likes: number;
-  replies: Comment[];
-}
 
-const MOCK_PRODUCT: ProductData = {
-  id: "iphone-17-pro",
-  name: "iPhone 17 Pro Max",
-  category: "Tech & Gadgets",
-  description:
-    "The latest flagship mobile device from Apple, featuring a 5x periscope lens and an A18 Bionic chip.",
-  overallRating: 4.6,
-  totalReviews: 1245,
-  imageUrl: "/images/iphone-placeholder.jpg", // Placeholder for Image path
-  ratingBreakdown: [
-    { rating: 5, count: 800 },
-    { rating: 4, count: 300 },
-    { rating: 3, count: 100 },
-    { rating: 2, count: 30 },
-    { rating: 1, count: 15 },
-  ],
-};
+// const MOCK_PRODUCT: ProductData = {
+//   id: "iphone-17-pro",
+//   name: "iPhone 17 Pro Max",
+//   category: "Tech & Gadgets",
+//   description:
+//     "The latest flagship mobile device from Apple, featuring a 5x periscope lens and an A18 Bionic chip.",
+//   overallRating: 4.6,
+//   totalReviews: 1245,
+//   imageUrl: "/images/iphone-placeholder.jpg", // Placeholder for Image path
+//   ratingBreakdown: [
+//     { rating: 5, count: 800 },
+//     { rating: 4, count: 300 },
+//     { rating: 3, count: 100 },
+//     { rating: 2, count: 30 },
+//     { rating: 1, count: 15 },
+//   ],
+// };
 
 // const MOCK_COMMENTS: Comment[] = [
 //   {
@@ -178,10 +150,10 @@ const CommentItem: React.FC<CommentProps> = ({
           }`}
         />
         <div>
-          <p className="font-semibold text-gray-900">{comment.userName}</p>
+          <p className="font-semibold text-gray-900">{comment.user.name}</p>
           <p className="text-xs text-gray-500 flex items-center">
             <Clock className="w-3 h-3 mr-1" />
-            {new Date(comment.timestamp).toLocaleDateString()}
+            {new Date(comment.createdAt).toLocaleDateString()}
           </p>
         </div>
         {comment.rating > 0 && <RatingDisplay rating={comment.rating} />}
@@ -227,11 +199,11 @@ const CommentItem: React.FC<CommentProps> = ({
       )}
 
       {/* Display Replies */}
-      {comment.replies.length > 0 && (
+      {comment?.replies?.length > 0 && (
         <div className="ml-6 border-l pl-4 border-gray-300 mt-4 space-y-3">
           {comment.replies.map((reply) => (
             <CommentItem
-              key={reply.id}
+              key={reply?.id}
               comment={reply}
               isReply={true}
               onCommentAdded={onCommentAdded}
@@ -332,6 +304,8 @@ export default function ReviewDetailPage({
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [product, setProduct] = useState<ProductData>();
   const { getSingleItem } = useItemStore();
+  const { reviews, fetchReviews } = useReviewStore();
+  const router = useRouter();
 
   // Dynamic function to handle adding a new comment or reply
   const handleNewComment = (parentId: number | undefined, content: string) => {
@@ -364,6 +338,7 @@ export default function ReviewDetailPage({
   };
 
   const getRatingBarWidth = (count: number) => {
+    if (!product) return "0%";
     const maxCount = Math.max(...product.ratingBreakdown.map((b) => b.count));
     return `${(count / maxCount) * 100}%`;
   };
@@ -372,11 +347,19 @@ export default function ReviewDetailPage({
     const fetchSingleProd = async () => {
       const { id } = await params; // ✅ unwrap it
       const data: ProductData = await getSingleItem(id);
+      console.log("this is the single item data ", data);
       setProduct(data);
     };
+    const fetchReviewsData = async () => {
+      const { id } = await params; // ✅ unwrap it
+      const data = await fetchReviews(id);
+
+      console.log("this is the reviews data ", data);
+      if (typeof data != "boolean") setComments(data);
+    };
+    fetchReviewsData();
     fetchSingleProd();
   }, []);
-  console.log("this si the prod ", product);
 
   return (
     <div className="bg-gray-50 py-12 md:py-16 min-h-screen">
@@ -414,6 +397,14 @@ export default function ReviewDetailPage({
                     Reviews
                   </span>
                 </div>
+                <button
+                  onClick={() => {
+                    router.push("/submit-review?id=" + product.id);
+                  }}
+                  className="mt-8 px-5 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
+                >
+                  Review this product
+                </button>
               </div>
 
               {/* Rating Breakdown */}
@@ -456,7 +447,7 @@ export default function ReviewDetailPage({
             <div className="mt-8 space-y-6">
               {comments.map((comment) => (
                 <CommentItem
-                  key={comment.id}
+                  key={comment._id}
                   comment={comment}
                   onCommentAdded={handleNewComment}
                 />

@@ -1,7 +1,7 @@
 // app/submit-review/page.tsx
 "use client";
 
-import { useState, FormEvent, ChangeEvent, JSX } from "react";
+import { useState, FormEvent, ChangeEvent, JSX, useEffect } from "react";
 import {
   Send,
   Star,
@@ -37,6 +37,20 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
+import { useItemStore, useReviewStore } from "@/utils/store";
+import { useSearchParams } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+
+interface ProductData {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  overallRating: number;
+  totalReviews: number;
+  imageUrl: string;
+  ratingBreakdown: { rating: number; count: number }[];
+}
 
 // Interface for form state
 interface ReviewFormState {
@@ -58,6 +72,12 @@ export default function SubmitReviewPage(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [product, setProduct] = useState<ProductData>();
+  const { getSingleItem } = useItemStore();
+  const { postReviews } = useReviewStore();
+  const searchParams = useSearchParams();
+  const id: string | null = searchParams.get("id"); // →
+  const { data: session, status } = useSession();
 
   const itemTypes = [
     { value: "tech", label: "Tech & Gadgets", icon: Zap },
@@ -119,8 +139,19 @@ export default function SubmitReviewPage(): JSX.Element {
     // --- API Submission Logic (Placeholder) ---
     try {
       // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
+      const reviewPostData = {
+        userid: session?.user?.id,
+        category: formState.itemType,
+        itemId: id,
+        content: formState.content,
+        title: formState.title,
+        rating: formState.rating,
+      };
+      const response = await postReviews(reviewPostData);
+      // await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (!response) {
+        throw new Error("Failed to submit review. Please try again.");
+      }
       // Assume success if no critical errors are found client-side
       // In a real app, send formState data to /api/reviews
 
@@ -133,6 +164,20 @@ export default function SubmitReviewPage(): JSX.Element {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    const fetchSingleProd = async () => {
+      if (!id) return;
+      const data: ProductData = await getSingleItem(id);
+      console.log("this is the single item data ", data, id);
+      setProduct(data);
+      setFormState((prev) => ({
+        ...prev,
+        ["itemType"]: data?.category || "",
+        ["itemName"]: data?.name || "",
+      }));
+    };
+    fetchSingleProd();
+  }, []);
 
   if (success) {
     return (
@@ -171,6 +216,11 @@ export default function SubmitReviewPage(): JSX.Element {
           <p className="mt-2 text-md text-gray-500">
             Be the first to share your rating and experience on **Reviewed**.
           </p>
+          {product && (
+            <p className="p-5 text-lg text-emerald-600">
+              Reviewing for: <strong>{product?.name}</strong>
+            </p>
+          )}
         </div>
 
         {/* Review Form */}
