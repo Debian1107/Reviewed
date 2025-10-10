@@ -1,5 +1,5 @@
-// app/submit-review/page.tsx
 "use client";
+// app/submit-review/page.tsx
 
 import { useState, FormEvent, ChangeEvent, JSX, useEffect } from "react";
 import {
