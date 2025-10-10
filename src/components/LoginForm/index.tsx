@@ -29,9 +29,10 @@ export default function LoginForm(): JSX.Element {
     // --- Authentication Logic (Replace with your actual API call) ---
     try {
       const response = await signIn("credentials", {
-        redirect: false, // prevent full page reload
+        redirect: true, // prevent full page reload
         email,
         password,
+        callbackUrl: "/",
       });
 
       console.log("Response status:", response);
