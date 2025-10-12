@@ -19,7 +19,7 @@ const ReviewSchema = new Schema<IReview>(
     itemId: { type: Schema.Types.ObjectId, ref: "Item", required: true },
     title: { type: String },
     content: { type: String, required: true },
-    rating: { type: Number, min: 1, max: 5 },
+    rating: { type: Number, min: 0, max: 5 },
     likes: [{ type: Schema.Types.ObjectId, ref: "Like" }],
   },
   { timestamps: true }

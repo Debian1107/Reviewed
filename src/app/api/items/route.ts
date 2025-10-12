@@ -126,7 +126,43 @@ export async function GET(request: Request) {
       };
       console.log("itemsList", itemsList);
     } else {
-      itemsList = await Item.find();
+      const reviewStats = await Review.aggregate([
+        {
+          $group: {
+            _id: "$itemId", // group by itemId
+            averageRating: { $avg: "$rating" },
+            totalReviews: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            itemId: "$_id",
+            averageRating: 1,
+            totalReviews: 1,
+          },
+        },
+      ]);
+      const items = await Item.find().lean();
+
+      const statsMap = reviewStats.reduce((acc, stat) => {
+        acc[stat.itemId.toString()] = stat;
+        return acc;
+      }, {});
+
+      itemsList = items.map((item) => {
+        const stat = statsMap[item._id.toString()] || {
+          averageRating: 0,
+          totalReviews: 0,
+        };
+        return {
+          ...item,
+          averageRating: stat.averageRating,
+          totalReviews: stat.totalReviews,
+        };
+      });
+
+      console.log("itemsList", itemsList);
     }
     return NextResponse.json({ success: true, data: itemsList });
   } catch (error) {

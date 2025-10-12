@@ -40,17 +40,7 @@ import Link from "next/link";
 import { useItemStore, useReviewStore } from "@/utils/store";
 import { useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-
-interface ProductData {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  overallRating: number;
-  totalReviews: number;
-  imageUrl: string;
-  ratingBreakdown: { rating: number; count: number }[];
-}
+import { ProductData } from "@/types/global";
 
 // Interface for form state
 interface ReviewFormState {
@@ -121,6 +111,7 @@ export default function SubmitReviewPage(): JSX.Element {
   };
 
   const handleRatingChange = (ratingValue: number) => {
+    if (ratingValue === 1 && formState.rating === 1) ratingValue = 0;
     setFormState((prev) => ({ ...prev, rating: ratingValue }));
   };
 
@@ -130,7 +121,7 @@ export default function SubmitReviewPage(): JSX.Element {
     setLoading(true);
     setSuccess(false);
 
-    if (formState.rating === 0 || !formState.itemName || !formState.title) {
+    if (!formState.itemName || !formState.title) {
       setError("Please select a rating, item name, and title.");
       setLoading(false);
       return;

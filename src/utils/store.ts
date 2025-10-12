@@ -213,18 +213,18 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
 
   fetchReviews: async (itemid, force = false) => {
     const { isLoading, lastFetched } = get();
-    console.log("in fetch items ", isLoading, lastFetched);
+    console.log("in fetch reviews store ---> ", isLoading, lastFetched);
 
     // Prevent duplicate fetches if already loading
-    if (isLoading || !itemid) return null;
+    if (isLoading || !itemid) return false;
 
     // Check for stale data, skip fetch if recent data exists and not forced
     const now = Date.now();
     const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
     if (!force && !isStale && get().reviews.length > 0) {
-      console.log("Using cached item data.", get().reviews);
-      return null;
+      console.log("Using cached reviews data.", get().reviews);
+      return true;
     }
 
     set({ isLoading: true, error: null });
@@ -263,7 +263,7 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
         error: message,
       });
       console.error("Failed to fetch items:", err);
-      return null;
+      return false;
     }
   },
 

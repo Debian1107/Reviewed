@@ -301,10 +301,10 @@ export default function ReviewDetailPage({
   params: { id: string };
 }): JSX.Element {
   // const product = MOCK_PRODUCT; // Fetched using params.id
-  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
+  const { reviews, fetchReviews } = useReviewStore();
+  const [comments, setComments] = useState<Comment[]>([]);
   const [product, setProduct] = useState<ProductData>();
   const { getSingleItem } = useItemStore();
-  const { reviews, fetchReviews } = useReviewStore();
   const router = useRouter();
 
   // Dynamic function to handle adding a new comment or reply
@@ -354,12 +354,16 @@ export default function ReviewDetailPage({
       const { id } = await params; // ✅ unwrap it
       const data = await fetchReviews(id);
 
-      console.log("this is the reviews data ", data);
-      if (typeof data != "boolean") setComments(data);
+      console.log("this is the reviews data ", data, id);
+      // if (typeof data != "boolean" || data == true) setComments(data);
     };
     fetchReviewsData();
     fetchSingleProd();
   }, []);
+
+  useEffect(() => {
+    setComments(reviews);
+  }, [reviews]);
 
   return (
     <div className="bg-gray-50 py-12 md:py-16 min-h-screen">
@@ -434,33 +438,35 @@ export default function ReviewDetailPage({
           </div>
 
           {/* --- 2. USER REVIEWS / COMMENTS SECTION --- */}
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
-              <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
-              User Comments ({comments.length})
-            </h2>
+          {comments && (
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+                <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
+                User Comments ({comments.length})
+              </h2>
 
-            {/* Form to Add New Comment (Main Level) */}
-            <AddCommentForm onCommentAdded={handleNewComment} />
+              {/* Form to Add New Comment (Main Level) */}
+              <AddCommentForm onCommentAdded={handleNewComment} />
 
-            {/* List of Comments */}
-            <div className="mt-8 space-y-6">
-              {comments.map((comment) => (
-                <CommentItem
-                  key={comment._id}
-                  comment={comment}
-                  onCommentAdded={handleNewComment}
-                />
-              ))}
-              {comments.length === 0 && (
-                <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
-                  <p className="text-lg">
-                    No comments yet. Be the first to share your experience!
-                  </p>
-                </div>
-              )}
+              {/* List of Comments */}
+              <div className="mt-8 space-y-6">
+                {comments.map((comment) => (
+                  <CommentItem
+                    key={comment._id}
+                    comment={comment}
+                    onCommentAdded={handleNewComment}
+                  />
+                ))}
+                {comments.length === 0 && (
+                  <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
+                    <p className="text-lg">
+                      No comments yet. Be the first to share your experience!
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
