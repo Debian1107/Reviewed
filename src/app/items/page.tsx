@@ -15,83 +15,77 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useItemStore } from "@/utils/store";
+import { ItemCard } from "@/components/card";
+import { Item } from "@/types/global";
 
 // --- MOCK DATA ---
-interface Item {
-  id: string;
-  name: string;
-  category: string;
-  reviewCount: number;
-  averageRating: number;
-  tags: string[];
-}
 
-const MOCK_ITEMS: Item[] = [
-  {
-    id: "iphone-17-pro",
-    name: "iPhone 17 Pro Max",
-    category: "tech",
-    reviewCount: 1245,
-    averageRating: 4.6,
-    tags: ["smartphone", "apple", "flagship"],
-  },
-  {
-    id: "cybertruck",
-    name: "Tesla Cybertruck",
-    category: "auto",
-    reviewCount: 450,
-    averageRating: 3.1,
-    tags: ["truck", "electric", "tesla"],
-  },
-  {
-    id: "dune-2",
-    name: "Dune: Part Two",
-    category: "media",
-    reviewCount: 980,
-    averageRating: 4.9,
-    tags: ["movie", "scifi", "imax"],
-  },
-  {
-    id: "a380-seat",
-    name: "Airbus A380 Economy Seat",
-    category: "travel",
-    reviewCount: 450,
-    averageRating: 2.1,
-    tags: ["airplane", "comfort", "long-haul"],
-  },
-  {
-    id: "i95-va",
-    name: "I-95 Southbound (VA)",
-    category: "infrastructure",
-    reviewCount: 2100,
-    averageRating: 1.9,
-    tags: ["road", "highway", "pothole"],
-  },
-  {
-    id: "wh-1000xm6",
-    name: "Sony WH-1000XM6 Headphones",
-    category: "tech",
-    reviewCount: 650,
-    averageRating: 4.4,
-    tags: ["audio", "anc", "wireless"],
-  },
-  {
-    id: "macbook-pro-m4",
-    name: 'MacBook Pro 16" (M4)',
-    category: "tech",
-    reviewCount: 300,
-    averageRating: 4.8,
-    tags: ["laptop", "apple", "pro"],
-  },
-  {
-    id: "toyota-prius-2024",
-    name: "Toyota Prius (2024)",
-    category: "auto",
-    reviewCount: 120,
-    averageRating: 4.2,
-    tags: ["hybrid", "car", "economy"],
-  },
-];
+// const MOCK_ITEMS: Item[] = [
+//   {
+//     id: "iphone-17-pro",
+//     name: "iPhone 17 Pro Max",
+//     category: "tech",
+//     reviewCount: 1245,
+//     averageRating: 4.6,
+//     tags: ["smartphone", "apple", "flagship"],
+//   },
+//   {
+//     id: "cybertruck",
+//     name: "Tesla Cybertruck",
+//     category: "auto",
+//     reviewCount: 450,
+//     averageRating: 3.1,
+//     tags: ["truck", "electric", "tesla"],
+//   },
+//   {
+//     id: "dune-2",
+//     name: "Dune: Part Two",
+//     category: "media",
+//     reviewCount: 980,
+//     averageRating: 4.9,
+//     tags: ["movie", "scifi", "imax"],
+//   },
+//   {
+//     id: "a380-seat",
+//     name: "Airbus A380 Economy Seat",
+//     category: "travel",
+//     reviewCount: 450,
+//     averageRating: 2.1,
+//     tags: ["airplane", "comfort", "long-haul"],
+//   },
+//   {
+//     id: "i95-va",
+//     name: "I-95 Southbound (VA)",
+//     category: "infrastructure",
+//     reviewCount: 2100,
+//     averageRating: 1.9,
+//     tags: ["road", "highway", "pothole"],
+//   },
+//   {
+//     id: "wh-1000xm6",
+//     name: "Sony WH-1000XM6 Headphones",
+//     category: "tech",
+//     reviewCount: 650,
+//     averageRating: 4.4,
+//     tags: ["audio", "anc", "wireless"],
+//   },
+//   {
+//     id: "macbook-pro-m4",
+//     name: 'MacBook Pro 16" (M4)',
+//     category: "tech",
+//     reviewCount: 300,
+//     averageRating: 4.8,
+//     tags: ["laptop", "apple", "pro"],
+//   },
+//   {
+//     id: "toyota-prius-2024",
+//     name: "Toyota Prius (2024)",
+//     category: "auto",
+//     reviewCount: 120,
+//     averageRating: 4.2,
+//     tags: ["hybrid", "car", "economy"],
+//   },
+// ];
 
 const CATEGORIES = [
   { value: "all", label: "All Items", icon: ListFilter },
@@ -105,37 +99,6 @@ const CATEGORIES = [
 // --- COMPONENTS ---
 
 // 1. Item Card Component
-const ItemCard: React.FC<{ item: Item }> = ({ item }) => (
-  <Link
-    href={`/reviews/${item.id}`}
-    className="block p-5 bg-white border border-gray-100 rounded-xl shadow-md hover:shadow-xl hover:border-emerald-300 transition-all duration-200 transform hover:-translate-y-0.5"
-  >
-    <div className="flex justify-between items-start mb-2">
-      <h3 className="text-xl font-bold text-gray-900 line-clamp-1">
-        {item.name}
-      </h3>
-      <div className="flex items-center space-x-1 text-yellow-500">
-        <Star className="w-4 h-4 fill-current" />
-        <span className="text-base font-semibold text-gray-700">
-          {item.averageRating.toFixed(1)}
-        </span>
-      </div>
-    </div>
-
-    <p className="text-sm font-medium text-emerald-600 uppercase tracking-wider mb-2">
-      {item.category}
-    </p>
-
-    <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
-      <span className="text-sm text-gray-500">
-        {item.reviewCount.toLocaleString()} Reviews
-      </span>
-      <span className="text-emerald-600 font-medium text-sm">
-        View Details →
-      </span>
-    </div>
-  </Link>
-);
 
 // --- MAIN PAGE COMPONENT ---
 

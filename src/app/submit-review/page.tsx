@@ -40,7 +40,10 @@ import Link from "next/link";
 import { useItemStore, useReviewStore } from "@/utils/store";
 import { useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { ProductData } from "@/types/global";
+import { ProductData, Item } from "@/types/global";
+import { ItemCard } from "@/components/card";
+import Image from "next/image";
+// import Loadingimage from "next/loading.svg";
 
 // Interface for form state
 interface ReviewFormState {
@@ -62,8 +65,11 @@ export default function SubmitReviewPage(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [searchItem, setSearchItem] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<Item[]>([]);
   const [product, setProduct] = useState<ProductData>();
-  const { getSingleItem } = useItemStore();
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const { getSingleItem, searchItems } = useItemStore();
   const { postReviews } = useReviewStore();
   const searchParams = useSearchParams();
   const id: string | null = searchParams.get("id"); // →
@@ -133,7 +139,7 @@ export default function SubmitReviewPage(): JSX.Element {
       const reviewPostData = {
         userid: session?.user?.id,
         category: formState.itemType,
-        itemId: id,
+        itemId: id || product?.id,
         content: formState.content,
         title: formState.title,
         rating: formState.rating,
@@ -155,6 +161,23 @@ export default function SubmitReviewPage(): JSX.Element {
       setLoading(false);
     }
   };
+
+  const handleSearchSelection = (item: Item) => {
+    setSearchResults([]);
+    setFormState((prev) => ({
+      ...prev,
+      ["itemType"]: item?.category || "",
+      ["itemName"]: item?.name || "",
+    }));
+    setProduct(item);
+  };
+
+  const handleSearch = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
+  };
   useEffect(() => {
     const fetchSingleProd = async () => {
       if (!id) return;
@@ -169,6 +192,30 @@ export default function SubmitReviewPage(): JSX.Element {
     };
     fetchSingleProd();
   }, []);
+
+  useEffect(() => {
+    if (!searchItem.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    const controller = new AbortController();
+    const delayDebounce = setTimeout(() => {
+      searchItems(searchItem)
+        .then((res) => {
+          setSearchLoading(false);
+          setSearchResults(res);
+        })
+        .catch((err) => {
+          if (err.name !== "AbortError") console.error(err);
+        });
+    }, 1000); // 400ms debounce delay
+
+    return () => {
+      clearTimeout(delayDebounce);
+      controller.abort(); // cancel old request
+    };
+  }, [searchItem]);
 
   if (success) {
     return (
@@ -217,15 +264,81 @@ export default function SubmitReviewPage(): JSX.Element {
         {/* Review Form */}
         <form className="space-y-6" onSubmit={handleSubmit}>
           {/* 1. Item Identification */}
+
+          <div>
+            <label
+              htmlFor="itemName"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Search of Item/Product
+            </label>
+            {/* {formState.itemName} */}
+            <input
+              id="itemName"
+              name="itemName"
+              type="text"
+              required
+              value={searchItem}
+              onChange={(e) => setSearchItem(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl placeholder-gray-400 text-gray-900 
+                               focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-base"
+              placeholder="e.g., iPhone 17 Pro Max or I-95 South"
+              disabled={loading}
+            />
+            {searchLoading && (
+              <div
+                className="w-full flex gap-7 justify-center py-3.5 px-4 mt-4 border border-transparent text-lg font-bold rounded-xl text-white 
+                         bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-emerald-500/50 
+                         transition duration-300 shadow-lg shadow-emerald-500/30 disabled:opacity-50"
+              >
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                {/* <Image src="/loading.svg" alt="Logo" width={200} height={200} /> */}
+                <p>Searching . . . . </p>
+              </div>
+            )}
+            {searchResults && searchResults.length != 0 && (
+              <div>
+                {searchResults.map((item: Item) => {
+                  return (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      onItemClick={handleSearchSelection}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label
                 htmlFor="itemType"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                What are you reviewing?
+                Item category
               </label>
-              <select
+              {formState.itemType}
+              {/* <select
                 id="itemType"
                 name="itemType"
                 required
@@ -242,37 +355,7 @@ export default function SubmitReviewPage(): JSX.Element {
                     {type.label}
                   </option>
                 ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg
-                  className="fill-current h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="itemName"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Name of Item/Product
-              </label>
-              <input
-                id="itemName"
-                name="itemName"
-                type="text"
-                required
-                value={formState.itemName}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl placeholder-gray-400 text-gray-900 
-                               focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-base"
-                placeholder="e.g., iPhone 17 Pro Max or I-95 South"
-                disabled={loading}
-              />
+              </select> */}
             </div>
           </div>
 

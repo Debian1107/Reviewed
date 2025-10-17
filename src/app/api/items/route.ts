@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     // Fetch all items
     let itemsList;
     if (search) {
-      itemsList = searchItem(search);
+      itemsList = await searchItem(search);
     } else if (itemid) {
       const item = await Item.findOne({ id: itemid }).lean();
       if (!item) {

@@ -16,11 +16,19 @@ interface ReviewState {
   error: string | null;
   lastFetched: number | null; // Timestamp to track when data was last loaded
 }
+interface postReviewsData {
+  userid: string | undefined;
+  category: string;
+  itemId: string | null;
+  content: string;
+  title: string;
+  rating: number;
+}
 
 // Define the actions (functions to update the state)
 interface ItemActions {
   fetchItems: (force?: boolean) => Promise<void>;
-  searchItems: (query: string, force?: boolean) => Promise<void>;
+  searchItems: (query: string, force?: boolean) => Promise<Item[]>;
   getSingleItem: (id: string | null, force?: boolean) => Promise<ProductData>;
   resetError: () => void;
 }
@@ -31,7 +39,7 @@ interface ReviewActions {
     force?: boolean
   ) => Promise<Comment[] | boolean>;
   searchReviews: (query: string, force?: boolean) => Promise<void>;
-  postReviews: (data: any) => Promise<boolean>;
+  postReviews: (data: postReviewsData) => Promise<boolean>;
   getSingleReviews: (
     id: string | null,
     force?: boolean
@@ -109,22 +117,6 @@ export const useItemStore = create<ItemStore>((set, get) => ({
     }
   },
   searchItems: async (query: string, force = false) => {
-    const { isLoading, lastFetched } = get();
-
-    // Prevent duplicate fetches if already loading
-    if (isLoading) return;
-
-    // Check for stale data, skip fetch if recent data exists and not forced
-    const now = Date.now();
-    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
-
-    if (!force && !isStale && get().items.length > 0) {
-      console.log("Using cached item data.");
-      return;
-    }
-
-    set({ isLoading: true, error: null });
-
     try {
       const response = await fetch("/api/items?search=" + query, {
         method: "GET",
@@ -141,6 +133,7 @@ export const useItemStore = create<ItemStore>((set, get) => ({
       }
 
       const result = await response.json();
+      console.log("search items -", result);
       return result?.data || [];
     } catch (err) {
       const message =
