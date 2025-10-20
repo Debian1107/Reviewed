@@ -19,7 +19,7 @@ interface ReviewState {
 interface postReviewsData {
   userid: string | undefined;
   category: string;
-  itemId: string | null;
+  itemId: string | undefined;
   content: string;
   title: string;
   rating: number;
@@ -29,7 +29,10 @@ interface postReviewsData {
 interface ItemActions {
   fetchItems: (force?: boolean) => Promise<void>;
   searchItems: (query: string, force?: boolean) => Promise<Item[]>;
-  getSingleItem: (id: string | null, force?: boolean) => Promise<ProductData>;
+  getSingleItem: (
+    id: string | null,
+    force?: boolean
+  ) => Promise<ProductData | Item>;
   resetError: () => void;
 }
 

@@ -12,6 +12,11 @@ import {
   Star,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useItemStore } from "@/utils/store";
+import { Item, ProductData } from "@/types/global";
+import { ItemCard } from "@/components/card";
+import { itemTypes } from "@/utils/constants";
 
 // Helper component for the featured categories
 interface CategoryCardProps {
@@ -42,6 +47,47 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
 );
 
 export default function HomePage() {
+  // const [homepageSearch, setHomepageSearch] = useState("");
+  // const [loading, setLoading] = useState<boolean>(false);
+  // const [success, setSuccess] = useState<boolean>(false);
+  // const [error, setError] = useState<string>("");
+  const [searchItem, setSearchItem] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<Item[]>([]);
+  // const [product, setProduct] = useState<ProductData>();
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const { getSingleItem, searchItems } = useItemStore();
+  // const { postReviews } = useReviewStore();
+  // const searchParams = useSearchParams();
+  // const id: string | null = searchParams.get("id"); // →
+  // const { data: session, status } = useSession();
+  const handleSearchSelection = (item: Item) => {
+    setSearchResults([]);
+    // setProduct(item);
+  };
+
+  useEffect(() => {
+    if (!searchItem.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    const controller = new AbortController();
+    const delayDebounce = setTimeout(() => {
+      searchItems(searchItem)
+        .then((res) => {
+          setSearchLoading(false);
+          setSearchResults(res);
+        })
+        .catch((err) => {
+          if (err.name !== "AbortError") console.error(err);
+        });
+    }, 1000); // 400ms debounce delay
+
+    return () => {
+      clearTimeout(delayDebounce);
+      controller.abort(); // cancel old request
+    };
+  }, [searchItem]);
   return (
     <main className="bg-gray-50 ">
       {/* ------------------------------------------------------------------ */}
@@ -63,10 +109,25 @@ export default function HomePage() {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400" />
             <input
               type="search"
+              onChange={(e) => setSearchItem(e.target.value)}
+              value={searchItem}
               placeholder="Search for a product, movie, road, or service..."
               className="w-full py-4 pl-14 pr-4 text-gray-900 bg-white border border-gray-300 rounded-xl text-lg shadow-2xl focus:ring-emerald-500 focus:border-emerald-500"
               // In a real app, this input would be connected to a dynamic search function
             />
+            {searchResults && searchResults.length != 0 && (
+              <div>
+                {searchResults.map((item: Item) => {
+                  return (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      // onItemClick={handleSearchSelection}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <p className="mt-4 text-sm text-gray-400">
@@ -92,32 +153,16 @@ export default function HomePage() {
 
         {/* Categories Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-          <CategoryCard
-            icon={Zap}
-            title="Tech & Gadgets"
-            href="/reviews/tech"
-          />
-          <CategoryCard
-            icon={MonitorPlay}
-            title="Movies & Media"
-            href="/reviews/media"
-          />
-          <CategoryCard icon={Car} title="Automotive" href="/reviews/cars" />
-          <CategoryCard
-            icon={Plane}
-            title="Travel & Aviation"
-            href="/reviews/travel"
-          />
-          <CategoryCard
-            icon={Truck}
-            title="Infrastructure"
-            href="/reviews/roads"
-          />
-          <CategoryCard
-            icon={ShoppingBag}
-            title="Consumer Goods"
-            href="/reviews/goods"
-          />
+          {itemTypes.map((category) => {
+            return (
+              <CategoryCard
+                key={category.value}
+                icon={category.icon}
+                title={category.label}
+                href={`/items/?category=${category.value}`}
+              />
+            );
+          })}
         </div>
       </section>
 

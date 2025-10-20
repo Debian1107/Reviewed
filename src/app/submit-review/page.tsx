@@ -67,7 +67,7 @@ export default function SubmitReviewPage(): JSX.Element {
   const [error, setError] = useState<string>("");
   const [searchItem, setSearchItem] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Item[]>([]);
-  const [product, setProduct] = useState<ProductData>();
+  const [product, setProduct] = useState<ProductData | Item>();
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const { getSingleItem, searchItems } = useItemStore();
   const { postReviews } = useReviewStore();
@@ -181,7 +181,7 @@ export default function SubmitReviewPage(): JSX.Element {
   useEffect(() => {
     const fetchSingleProd = async () => {
       if (!id) return;
-      const data: ProductData = await getSingleItem(id);
+      const data: ProductData | Item = await getSingleItem(id);
       console.log("this is the single item data ", data, id);
       setProduct(data);
       setFormState((prev) => ({
