@@ -9,6 +9,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 export interface IItem extends Document {
   id: string; // The unique slug or ID used in URLs (e.g., 'iphone-17-pro')
   name: string; // The display name of the item
+  description: string; // The display name of the item
   image: string; // The display name of the item
   category: string; // Main category (e.g., 'tech', 'auto', 'media')
   tags: string[]; // Keywords for search/filtering (e.g., 'smartphone', 'apple')
@@ -34,6 +35,11 @@ const ItemSchema = new Schema<IItem>(
     },
 
     name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
       type: String,
       required: true,
       trim: true,

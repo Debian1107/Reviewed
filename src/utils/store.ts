@@ -31,6 +31,7 @@ interface ItemActions {
   searchItems: (query: string, force?: boolean) => Promise<Item[]>;
   getSingleItem: (
     id: string | null,
+    justItem?: boolean,
     force?: boolean
   ) => Promise<ProductData | Item>;
   resetError: () => void;
@@ -148,15 +149,15 @@ export const useItemStore = create<ItemStore>((set, get) => ({
       console.error("Failed to fetch items:", err);
     }
   },
-  getSingleItem: async (id: string | null, force = false) => {
+  getSingleItem: async (id: string | null, justItem = false, force = false) => {
     const { isLoading, lastFetched } = get();
 
     // Prevent duplicate fetches if already loading
     if (isLoading) return null;
 
     // Check for stale data, skip fetch if recent data exists and not forced
-    const now = Date.now();
-    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
+    // const now = Date.now();
+    // const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
     // if (!force && !isStale && get().items.length > 0) {
     //   console.log("Using cached item data.");
@@ -166,7 +167,7 @@ export const useItemStore = create<ItemStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await fetch("/api/items?id=" + id, {
+      const response = await fetch(`/api/items?id=${id}&justItem=${justItem}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

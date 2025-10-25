@@ -1,20 +1,11 @@
 // app/page.tsx
 "use client";
 
-import {
-  Search,
-  MonitorPlay,
-  Car,
-  Plane,
-  ShoppingBag,
-  Truck,
-  Zap,
-  Star,
-} from "lucide-react";
+import { Search, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useItemStore } from "@/utils/store";
-import { Item, ProductData } from "@/types/global";
+import { Item } from "@/types/global";
 import { ItemCard } from "@/components/card";
 import { itemTypes } from "@/utils/constants";
 

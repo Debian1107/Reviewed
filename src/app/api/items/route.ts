@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import Item from "@/models/Item"; // Import IItem and Item model
+import Item, { IItem } from "@/models/Item"; // Import IItem and Item model
 import Review from "@/models/Review";
 import dbConnect from "@/lib/mongodb"; // your db connection file
 import mongoose from "mongoose";
+import { Types } from "mongoose";
 
 // Ensure the database connection is established at the module level (Next.js Edge) or in the handler.
 // We'll keep it in the handler for robustness.
@@ -44,23 +45,28 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search: string | null = searchParams.get("search");
     const itemid: string | null = searchParams.get("id");
+    const justItem: string | null = searchParams.get("justItem");
 
     // Fetch all items
     let itemsList;
     if (search) {
       itemsList = await searchItem(search);
     } else if (itemid) {
-      const item = await Item.findOne({ id: itemid }).lean();
+      // const item:ItemType1  = await Item.findOne({ id: itemid }).lean();
+      // const item = await Item.findOne<ItemType1>({ id: itemid }).lean();
+      const item = await Item.findOne({ id: itemid }).lean<IItem>();
+
       if (!item) {
         return new Response(JSON.stringify({ error: "Item not found" }), {
           status: 404,
         });
       }
       // 2) Make sure we have an ObjectId to match against Review.itemId
-      const itemObjectId =
-        item._id instanceof mongoose.Types.ObjectId
-          ? item._id
-          : new mongoose.Types.ObjectId(item._id);
+      // const itemObjectId =item._id instanceof mongoose.Types.ObjectId
+      //     ? item._id
+      //     : new mongoose.Types.ObjectId(item._id);
+
+      const itemObjectId = item._id;
 
       const reviewStats = await Review.aggregate([
         { $match: { itemId: itemObjectId } },
@@ -112,18 +118,31 @@ export async function GET(request: Request) {
 
       if (!item) throw new Error("Item not found");
 
-      itemsList = {
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        description: item.description,
-        imageUrl: item.imageUrl,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        overallRating: Number(summary.averageRating?.toFixed(1)) || 0,
-        totalReviews: summary.totalReviews || 0,
-        ratingBreakdown,
-      };
+      if (justItem == "true") {
+        itemsList = {
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          description: item.description,
+          imageUrl: item.image,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          averageRating: Number(summary.averageRating?.toFixed(1)) || 0,
+          reviewCount: summary.totalReviews || 0,
+        };
+      } else
+        itemsList = {
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          description: item.description,
+          imageUrl: item.image,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          overallRating: Number(summary.averageRating?.toFixed(1)) || 0,
+          totalReviews: summary.totalReviews || 0,
+          ratingBreakdown,
+        };
       console.log("itemsList", itemsList);
     } else {
       const reviewStats = await Review.aggregate([

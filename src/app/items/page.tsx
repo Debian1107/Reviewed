@@ -1,7 +1,14 @@
 // app/products/page.tsx
 "use client";
 
-import { useState, useMemo, ChangeEvent, FormEvent, useEffect } from "react";
+import {
+  useState,
+  useMemo,
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  use,
+} from "react";
 import {
   Search,
   Zap,
@@ -16,85 +23,11 @@ import {
 import Link from "next/link";
 import { useItemStore } from "@/utils/store";
 import { ItemCard } from "@/components/card";
-import { Item } from "@/types/global";
+// import { Item } from "@/types/global";
+import { useSearchParams } from "next/navigation";
+import { itemTypes } from "@/utils/constants";
 
-// --- MOCK DATA ---
-
-// const MOCK_ITEMS: Item[] = [
-//   {
-//     id: "iphone-17-pro",
-//     name: "iPhone 17 Pro Max",
-//     category: "tech",
-//     reviewCount: 1245,
-//     averageRating: 4.6,
-//     tags: ["smartphone", "apple", "flagship"],
-//   },
-//   {
-//     id: "cybertruck",
-//     name: "Tesla Cybertruck",
-//     category: "auto",
-//     reviewCount: 450,
-//     averageRating: 3.1,
-//     tags: ["truck", "electric", "tesla"],
-//   },
-//   {
-//     id: "dune-2",
-//     name: "Dune: Part Two",
-//     category: "media",
-//     reviewCount: 980,
-//     averageRating: 4.9,
-//     tags: ["movie", "scifi", "imax"],
-//   },
-//   {
-//     id: "a380-seat",
-//     name: "Airbus A380 Economy Seat",
-//     category: "travel",
-//     reviewCount: 450,
-//     averageRating: 2.1,
-//     tags: ["airplane", "comfort", "long-haul"],
-//   },
-//   {
-//     id: "i95-va",
-//     name: "I-95 Southbound (VA)",
-//     category: "infrastructure",
-//     reviewCount: 2100,
-//     averageRating: 1.9,
-//     tags: ["road", "highway", "pothole"],
-//   },
-//   {
-//     id: "wh-1000xm6",
-//     name: "Sony WH-1000XM6 Headphones",
-//     category: "tech",
-//     reviewCount: 650,
-//     averageRating: 4.4,
-//     tags: ["audio", "anc", "wireless"],
-//   },
-//   {
-//     id: "macbook-pro-m4",
-//     name: 'MacBook Pro 16" (M4)',
-//     category: "tech",
-//     reviewCount: 300,
-//     averageRating: 4.8,
-//     tags: ["laptop", "apple", "pro"],
-//   },
-//   {
-//     id: "toyota-prius-2024",
-//     name: "Toyota Prius (2024)",
-//     category: "auto",
-//     reviewCount: 120,
-//     averageRating: 4.2,
-//     tags: ["hybrid", "car", "economy"],
-//   },
-// ];
-
-const CATEGORIES = [
-  { value: "all", label: "All Items", icon: ListFilter },
-  { value: "tech", label: "Tech & Gadgets", icon: Zap },
-  { value: "auto", label: "Automotive", icon: Car },
-  { value: "media", label: "Movies & Media", icon: MonitorPlay },
-  { value: "travel", label: "Travel / Seats", icon: Plane },
-  { value: "infrastructure", label: "Roads / Places", icon: Truck },
-];
+const CATEGORIES = itemTypes;
 
 // --- COMPONENTS ---
 
@@ -109,6 +42,9 @@ export default function ProductsPage() {
     "latest" | "highest_rating" | "most_reviews"
   >("most_reviews");
   const { items, fetchItems, isLoading } = useItemStore();
+  const searchParams = useSearchParams();
+
+  const incomingCategory: string | null = searchParams.get("category"); // →
 
   // console.log("this is the items ", items);
 
@@ -158,6 +94,17 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    if (items && items.length > 0 && incomingCategory) {
+      const validCategory = CATEGORIES.some(
+        (cat) => cat.value === incomingCategory
+      );
+      if (validCategory) {
+        setSelectedCategory(incomingCategory);
+      }
+    }
+  }, [items]);
 
   // useEffect(() => {}, [items]);
 
@@ -230,7 +177,7 @@ export default function ProductsPage() {
         {/* --- CATEGORIES & SORTING --- */}
         <div className="lg:flex lg:justify-between lg:items-center mb-8 p-4 bg-white rounded-xl shadow-lg border border-gray-100">
           {/* Category Navigation (Horizontal Scroll on Mobile) */}
-          <div className="flex flex-wrap gap-2 lg:gap-4 overflow-x-auto pb-2 lg:pb-0">
+          <div className="flex  gap-2 h-[40px] lg:gap-4 overflow-x-auto pb-2 lg:pb-0">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.value}

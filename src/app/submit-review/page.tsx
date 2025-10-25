@@ -34,6 +34,7 @@ import {
   Shield,
   Globe,
   ShoppingBag,
+  X,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -67,7 +68,7 @@ export default function SubmitReviewPage(): JSX.Element {
   const [error, setError] = useState<string>("");
   const [searchItem, setSearchItem] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Item[]>([]);
-  const [product, setProduct] = useState<ProductData | Item>();
+  const [product, setProduct] = useState<Item>();
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const { getSingleItem, searchItems } = useItemStore();
   const { postReviews } = useReviewStore();
@@ -162,28 +163,31 @@ export default function SubmitReviewPage(): JSX.Element {
     }
   };
 
-  const handleSearchSelection = (item: Item) => {
+  const handleSearchSelection = async (item: Item) => {
     setSearchResults([]);
     setFormState((prev) => ({
       ...prev,
       ["itemType"]: item?.category || "",
       ["itemName"]: item?.name || "",
     }));
-    setProduct(item);
+    const data: ProductData | Item = await getSingleItem(item.id, true);
+    setProduct(data as Item);
   };
 
-  const handleSearch = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
-  };
+  // const handleSearch = (
+  //   e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  // ) => {
+  //   const { name, value } = e.target;
+  //   setFormState((prev) => ({ ...prev, [name]: value }));
+  // };
+
   useEffect(() => {
     const fetchSingleProd = async () => {
       if (!id) return;
-      const data: ProductData | Item = await getSingleItem(id);
+      const data: ProductData | Item = await getSingleItem(id, true);
       console.log("this is the single item data ", data, id);
-      setProduct(data);
+      setProduct(data as Item);
+
       setFormState((prev) => ({
         ...prev,
         ["itemType"]: data?.category || "",
@@ -255,8 +259,14 @@ export default function SubmitReviewPage(): JSX.Element {
             Be the first to share your rating and experience on **Reviewed**.
           </p>
           {product && (
-            <p className="p-5 text-lg text-emerald-600">
+            <p className="p-5 text-lg text-emerald-600 flex justify-center">
               Reviewing for: <strong>{product?.name}</strong>
+              <span
+                className="px-3  text-2xl text-red-300 flex  items-center cursor-pointer"
+                onClick={() => setProduct(undefined)}
+              >
+                <X />
+              </span>
             </p>
           )}
         </div>
@@ -273,18 +283,22 @@ export default function SubmitReviewPage(): JSX.Element {
               Search of Item/Product
             </label>
             {/* {formState.itemName} */}
-            <input
-              id="itemName"
-              name="itemName"
-              type="text"
-              required
-              value={searchItem}
-              onChange={(e) => setSearchItem(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl placeholder-gray-400 text-gray-900 
+            {product ? (
+              <p className="">{formState.itemName} </p>
+            ) : (
+              <input
+                id="itemName"
+                name="itemName"
+                type="text"
+                required
+                value={searchItem}
+                onChange={(e) => setSearchItem(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl placeholder-gray-400 text-gray-900 
                                focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-base"
-              placeholder="e.g., iPhone 17 Pro Max or I-95 South"
-              disabled={loading}
-            />
+                placeholder="e.g., iPhone 17 Pro Max or I-95 South"
+                disabled={loading}
+              />
+            )}
             {searchLoading && (
               <div
                 className="w-full flex gap-7 justify-center py-3.5 px-4 mt-4 border border-transparent text-lg font-bold rounded-xl text-white 
@@ -338,24 +352,16 @@ export default function SubmitReviewPage(): JSX.Element {
                 Item category
               </label>
               {formState.itemType}
-              {/* <select
-                id="itemType"
-                name="itemType"
-                required
-                value={formState.itemType}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-base appearance-none bg-white pr-8"
-                disabled={loading}
+            </div>
+            <div>
+              <label
+                htmlFor="itemType"
+                className="block text-sm font-medium text-gray-700 mb-1"
               >
-                <option value="" disabled>
-                  Select a Category
-                </option>
-                {itemTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select> */}
+                Item rating
+              </label>
+              {product && "⭐".repeat(product.averageRating || 0)}
+              <span> {product?.averageRating} </span>
             </div>
           </div>
 

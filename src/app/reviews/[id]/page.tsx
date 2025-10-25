@@ -8,7 +8,7 @@ import { JSX } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useItemStore, useReviewStore } from "@/utils/store";
-import { Comment, ProductData } from "@/types/global";
+import { Comment, ProductData, Item } from "@/types/global";
 
 // --- MOCK DATA ---
 // Data for the specific product being reviewed
@@ -310,13 +310,16 @@ export default function ReviewDetailPage({
   // Dynamic function to handle adding a new comment or reply
   const handleNewComment = (parentId: number | undefined, content: string) => {
     const newComment: Comment = {
+      _id: Math.random().toString(36).substring(2, 15),
       id: Date.now(),
       userId: "currentUser", // Replace with actual logged-in user
-      userName: "LoggedInUser",
+      user: {
+        name: "LoggedInUser",
+      },
       rating: parentId ? 0 : 4, // Only main comments get a rating here for simplicity
       title: parentId ? "" : "Quick Comment",
       content: content,
-      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       likes: 0,
       replies: [],
     };
@@ -346,9 +349,10 @@ export default function ReviewDetailPage({
   useEffect(() => {
     const fetchSingleProd = async () => {
       const { id } = await params; // ✅ unwrap it
-      const data: ProductData = await getSingleItem(id);
-      console.log("this is the single item data ", data);
-      setProduct(data);
+      const data: ProductData | Item = await getSingleItem(id);
+      // console.log("this is the single item data ", data);
+      // if (data && "overallrating" in data)
+      setProduct(data as ProductData);
     };
     const fetchReviewsData = async () => {
       const { id } = await params; // ✅ unwrap it

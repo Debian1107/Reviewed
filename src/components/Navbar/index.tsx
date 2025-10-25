@@ -29,7 +29,12 @@ export default function Navbar() {
   ];
 
   // Placeholder for user name/login status
-  const userName = status === "loading" ? "Log In" : session?.user?.name;
+  const userName =
+    status === "loading"
+      ? "Log In"
+      : session?.user?.name
+      ? session.user.name
+      : "Log In";
   console.log("Session data:", session);
 
   return (
