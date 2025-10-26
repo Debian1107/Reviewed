@@ -38,6 +38,7 @@ interface postCommentsData {
   itemId: string | undefined;
   content: string;
   parentid?: number | null;
+  rating: number | null;
 }
 
 // Define the actions (functions to update the state)
@@ -510,9 +511,9 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
         },
         body: JSON.stringify({
           user: data.userid,
-
           itemId: data.itemId,
           content: data.content,
+          rating: data.rating,
         }),
       });
 

@@ -5,6 +5,8 @@ import Like from "@/models/Like";
 import "@/lib/mongodb"; // your db connection file
 import dbConnect from "@/lib/mongodb";
 import Item from "@/models/Item";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path as needed
 await dbConnect();
 
 // GET /api/reviews
@@ -49,6 +51,19 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await dbConnect();
+
+    // ✅ Get the current session
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user) {
+      return new Response(JSON.stringify({ message: "Unauthorized" }), {
+        status: 401,
+      });
+    }
+
+    // ✅ Access user details
+    const userEmail = session.user.email; // default available field
+    const userName = session.user.name; // default available field
     const body = await request.json();
 
     // Ensure required fields are present

@@ -47,7 +47,11 @@ const FullRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
 interface CommentProps {
   comment: Comment;
   isReply?: boolean;
-  onCommentAdded: (parentId: number | undefined, content: string) => void;
+  onCommentAdded: (
+    parentId: number | undefined,
+    content: string,
+    rating: number | null
+  ) => void;
 }
 
 const CommentItem: React.FC<CommentProps> = ({
@@ -56,21 +60,21 @@ const CommentItem: React.FC<CommentProps> = ({
   onCommentAdded,
 }) => {
   const [isReplying, setIsReplying] = useState(false);
-  const [replyContent, setReplyContent] = useState("");
+  // const [replyContent, setReplyContent] = useState("");
 
   // Placeholder function for handling like/delete
   const handleAction = (action: string) => {
     console.log(`${action} clicked for comment ${comment.id}`);
   };
 
-  const handleReplySubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (replyContent.trim()) {
-      onCommentAdded(comment.id, replyContent);
-      setReplyContent("");
-      setIsReplying(false);
-    }
-  };
+  // const handleReplySubmit = (e: FormEvent) => {
+  //   e.preventDefault();
+  //   if (replyContent.trim()) {
+  //     onCommentAdded(comment.id, replyContent);
+  //     setReplyContent("");
+  //     setIsReplying(false);
+  //   }
+  // };
 
   return (
     <div
@@ -87,7 +91,9 @@ const CommentItem: React.FC<CommentProps> = ({
           }`}
         />
         <div>
-          <p className="font-semibold text-gray-900">{comment.user.name}</p>
+          <p className="font-semibold text-gray-900">
+            {comment?.user?.name || "Random User"}
+          </p>
           <p className="text-xs text-gray-500 flex items-center">
             <Clock className="w-3 h-3 mr-1" />
             {new Date(comment.createdAt).toLocaleDateString()}
@@ -157,7 +163,11 @@ interface AddCommentFormProps {
   parentId?: number;
   isReplyForm?: boolean;
   itemID?: string;
-  onCommentAdded: (parentId: number | undefined, content: string) => void;
+  onCommentAdded: (
+    parentId: number | undefined,
+    content: string,
+    rating: number | null
+  ) => void;
 }
 
 const AddCommentForm: React.FC<AddCommentFormProps> = ({
@@ -167,8 +177,8 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
   onCommentAdded,
 }) => {
   const [content, setContent] = useState("");
+  const [commentRating, setCommentRating] = useState<number | null>(0);
   const { postComments } = useCommentStore();
-  const isLoggedIn = true; // Replace with actual auth check
   const { data: session, status } = useSession();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -178,6 +188,7 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
       userid: session?.user?.id,
       parentid: parentId || null,
       itemId: itemID,
+      rating: commentRating || null,
     };
     if (content.trim()) {
       const postingComment = await postComments(commentData);
@@ -187,31 +198,37 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
         alert("Failed to post comment");
         return;
       }
-      onCommentAdded(parentId, content);
+      onCommentAdded(parentId, content, commentRating);
       setContent("");
+      setCommentRating(null);
     }
   };
+  const handleRatingChange = (ratingValue: number) => {
+    // alert(`You rated this comment ${ratingValue} -- ${commentRating} stars`);
+    if (ratingValue === 1 && commentRating === 1) setCommentRating(0);
+    else setCommentRating(ratingValue);
+  };
 
-  if (!isLoggedIn) {
-    return (
-      <div
-        className={`p-5 mt-6 border-2 border-dashed border-gray-200 rounded-xl text-center ${
-          isReplyForm ? "mt-3 bg-white" : "bg-gray-50"
-        }`}
-      >
-        <p className="text-gray-600">
-          Please{" "}
-          <Link
-            href="/login"
-            className="text-emerald-600 font-semibold hover:underline"
-          >
-            log in
-          </Link>{" "}
-          to add a comment or reply.
-        </p>
-      </div>
-    );
-  }
+  // if (!isLoggedIn) {
+  //   return (
+  //     <div
+  //       className={`p-5 mt-6 border-2 border-dashed border-gray-200 rounded-xl text-center ${
+  //         isReplyForm ? "mt-3 bg-white" : "bg-gray-50"
+  //       }`}
+  //     >
+  //       <p className="text-gray-600">
+  //         Please{" "}
+  //         <Link
+  //           href="/login"
+  //           className="text-emerald-600 font-semibold hover:underline"
+  //         >
+  //           log in
+  //         </Link>{" "}
+  //         to add a comment or reply.
+  //       </p>
+  //     </div>
+  //   );
+  // }
 
   return (
     <form
@@ -225,6 +242,30 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
       <h4 className="font-semibold text-gray-800 mb-2">
         {isReplyForm ? "Add your reply" : "Add Your Comment"}
       </h4>
+      {!isReplyForm && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Your Overall Rating ({commentRating} / 5)
+          </label>
+          <div className="flex p-2 space-x-2 justify-center sm:justify-start">
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <button
+                key={rating}
+                type="button"
+                onClick={() => handleRatingChange(rating)}
+                className={`p-3 rounded-full transition-colors duration-200 ${
+                  commentRating && commentRating >= rating
+                    ? "text-yellow-500 bg-yellow-500/20 shadow-md scale-110"
+                    : "text-gray-300 bg-gray-100 hover:text-gray-400"
+                }`}
+                // disabled={loading}
+              >
+                <Star className="w-5 h-5 fill-current" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -265,7 +306,11 @@ export default function ReviewDetailPage({
   const router = useRouter();
 
   // Dynamic function to handle adding a new comment or reply
-  const handleNewComment = (parentId: number | undefined, content: string) => {
+  const handleNewComment = (
+    parentId: number | undefined,
+    content: string,
+    rating: number | null
+  ) => {
     const newComment: Comment = {
       _id: Math.random().toString(36).substring(2, 15),
       id: Date.now(),
@@ -274,7 +319,7 @@ export default function ReviewDetailPage({
         name: "LoggedInUser",
       },
       item: product ? product.id : "unknown",
-      rating: parentId ? 0 : 4, // Only main reviewComments get a rating here for simplicity
+      rating: parentId ? 0 : rating || 0, // Only main reviewComments get a rating here for simplicity
       title: parentId ? "" : "Quick Comment",
       content: content,
       createdAt: new Date().toISOString(),
@@ -311,6 +356,7 @@ export default function ReviewDetailPage({
       // console.log("this is the single item data ", data);
       // if (data && "overallrating" in data)
       setProduct(data as ProductData);
+      fetchComments(id);
     };
     const fetchReviewsData = async () => {
       const { id } = await params; // ✅ unwrap it
@@ -321,7 +367,7 @@ export default function ReviewDetailPage({
     };
     fetchReviewsData();
     fetchSingleProd();
-    fetchComments(params.id);
+    // const paramsId=await params; // ✅ unwrap it
   }, []);
 
   useEffect(() => {

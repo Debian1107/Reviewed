@@ -5,6 +5,9 @@ import Comment from "@/models/Comment";
 import "@/lib/mongodb"; // your db connection file
 import dbConnect from "@/lib/mongodb";
 import Item from "@/models/Item";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path as needed
+
 await dbConnect();
 
 // GET /api/comments
@@ -36,10 +39,12 @@ export async function GET(request: Request) {
           { status: 400 }
         );
       }
-      console.log(itemId, "  Product Instance:", productInst);
-      comments = await Comment.find({ product: productInst._id }).sort({
-        createdAt: -1,
-      });
+      // console.log(itemId, "  Product Instance:", productInst);
+      comments = await Comment.find({ product: productInst._id })
+        .populate("user", "name")
+        .sort({
+          createdAt: -1,
+        });
     }
     // .populate("likes") // populate likes if needed
 
@@ -58,8 +63,19 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await dbConnect();
-    const body = await request.json();
 
+    // ✅ Get the current session
+    const session = await getServerSession(authOptions);
+
+    // if (!session || !session.user) {
+    //   return new Response(JSON.stringify({ message: "Unauthorized" }), {
+    //     status: 401,
+    //   });
+    // }
+
+    // ✅ Access user details
+    const userID = session ? session.user.id : null; // default available field
+    const body = await request.json();
     // Ensure required fields are present
     const { user, itemId, content, rating } = body;
 
@@ -87,7 +103,7 @@ export async function POST(request: Request) {
 
     // Create the new review
     const newComment = await Comment.create({
-      user,
+      user: userID,
       content,
       product: ItemInst._id,
       rating,
