@@ -1,26 +1,27 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Types, model, models } from "mongoose";
+
+export interface CommentType extends Document {
+  user: Types.ObjectId | null;
+  product: Types.ObjectId | null;
+  content: string;
+  rating: number | null;
+  parentComment: Types.ObjectId | null;
+  likes: Types.ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const commentSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User", // reference to User schema
-      required: true,
+      required: false,
     },
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product", // reference to Product schema
       required: false, // set true if you want product comments only
-    },
-    order: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order", // optional: comment on an order
-      required: false,
-    },
-    store: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Store", // optional: comment on a store
-      required: false,
     },
     content: {
       type: String,
@@ -48,4 +49,6 @@ const commentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Comment", commentSchema);
+const Comment = models.Comment || model("Comment", commentSchema);
+
+export default Comment;

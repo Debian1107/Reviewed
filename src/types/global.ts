@@ -25,10 +25,11 @@ interface ProductData {
 interface Comment {
   id: number;
   _id: string;
-  userId: string;
+  userId: string | null;
   user: {
     name: string;
   };
+  item: string;
   rating: number;
   title: string;
   content: string;

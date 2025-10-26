@@ -7,72 +7,9 @@ import Image from "next/image";
 import { JSX } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useItemStore, useReviewStore } from "@/utils/store";
+import { useItemStore, useReviewStore, useCommentStore } from "@/utils/store";
 import { Comment, ProductData, Item } from "@/types/global";
-
-// --- MOCK DATA ---
-// Data for the specific product being reviewed
-
-// Data for individual user comments/reviews
-
-// const MOCK_PRODUCT: ProductData = {
-//   id: "iphone-17-pro",
-//   name: "iPhone 17 Pro Max",
-//   category: "Tech & Gadgets",
-//   description:
-//     "The latest flagship mobile device from Apple, featuring a 5x periscope lens and an A18 Bionic chip.",
-//   overallRating: 4.6,
-//   totalReviews: 1245,
-//   imageUrl: "/images/iphone-placeholder.jpg", // Placeholder for Image path
-//   ratingBreakdown: [
-//     { rating: 5, count: 800 },
-//     { rating: 4, count: 300 },
-//     { rating: 3, count: 100 },
-//     { rating: 2, count: 30 },
-//     { rating: 1, count: 15 },
-//   ],
-// };
-
-// const MOCK_COMMENTS: Comment[] = [
-//   {
-//     id: 1,
-//     userId: "user1",
-//     userName: "TechGuru_78",
-//     rating: 5,
-//     title: "Best in Class!",
-//     content:
-//       "Absolutely phenomenal performance. The new display is brighter than anything on the market. Worth the upgrade!",
-//     timestamp: "2025-10-01T10:00:00Z",
-//     likes: 45,
-//     replies: [
-//       {
-//         id: 11,
-//         userId: "user3",
-//         userName: "AppFanatic",
-//         rating: 0,
-//         title: "",
-//         content: "Agreed! But the battery life is the real silent winner here.",
-//         timestamp: "2025-10-01T12:30:00Z",
-//         likes: 5,
-//         replies: [],
-//       },
-//     ],
-//   },
-//   {
-//     id: 2,
-//     userId: "user2",
-//     userName: "CameraCritic",
-//     rating: 3,
-//     title: "Disappointed with the Software",
-//     content:
-//       "While the hardware is great, the camera software is buggy, and the color processing is too warm. A major letdown for a Pro device.",
-//     timestamp: "2025-09-30T15:45:00Z",
-//     likes: 12,
-//     replies: [],
-//   },
-// ];
-
-const MOCK_COMMENTS: Comment[] = [];
+import { useSession } from "next-auth/react";
 
 // --- COMPONENTS ---
 const RatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
@@ -183,7 +120,7 @@ const CommentItem: React.FC<CommentProps> = ({
         >
           <MessageCircle className="w-4 h-4 mr-1" /> Reply
         </button>
-        {/* Optional: Delete button shown only for the user's own comments */}
+        {/* Optional: Delete button shown only for the user's own reviewComments */}
         {/* <button onClick={() => handleAction('delete')} className="flex items-center text-sm text-red-500 hover:text-red-700 transition ml-auto">
                     <Trash2 className="w-4 h-4 mr-1" />
                 </button> */}
@@ -219,20 +156,37 @@ const CommentItem: React.FC<CommentProps> = ({
 interface AddCommentFormProps {
   parentId?: number;
   isReplyForm?: boolean;
+  itemID?: string;
   onCommentAdded: (parentId: number | undefined, content: string) => void;
 }
 
 const AddCommentForm: React.FC<AddCommentFormProps> = ({
   parentId,
   isReplyForm = false,
+  itemID,
   onCommentAdded,
 }) => {
   const [content, setContent] = useState("");
+  const { postComments } = useCommentStore();
   const isLoggedIn = true; // Replace with actual auth check
+  const { data: session, status } = useSession();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const commentData = {
+      content: content,
+      userid: session?.user?.id,
+      parentid: parentId || null,
+      itemId: itemID,
+    };
     if (content.trim()) {
+      const postingComment = await postComments(commentData);
+      if (postingComment) {
+        console.log("Comment posted successfully");
+      } else {
+        alert("Failed to post comment");
+        return;
+      }
       onCommentAdded(parentId, content);
       setContent("");
     }
@@ -269,7 +223,7 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
       }`}
     >
       <h4 className="font-semibold text-gray-800 mb-2">
-        {isReplyForm ? "Add your reply" : "Add Your Review/Comment"}
+        {isReplyForm ? "Add your reply" : "Add Your Comment"}
       </h4>
       <textarea
         value={content}
@@ -301,9 +255,12 @@ export default function ReviewDetailPage({
   params: { id: string };
 }): JSX.Element {
   // const product = MOCK_PRODUCT; // Fetched using params.id
-  const { reviews, fetchReviews } = useReviewStore();
+  const { reviews: reviewComments, fetchReviews } = useReviewStore();
+  const { comments: commentData, fetchComments } = useCommentStore();
+  // const [reviewComments, setReviewComments] = useState<Comment[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [product, setProduct] = useState<ProductData>();
+  const [showReview, setShowReview] = useState<boolean>(true);
   const { getSingleItem } = useItemStore();
   const router = useRouter();
 
@@ -316,7 +273,8 @@ export default function ReviewDetailPage({
       user: {
         name: "LoggedInUser",
       },
-      rating: parentId ? 0 : 4, // Only main comments get a rating here for simplicity
+      item: product ? product.id : "unknown",
+      rating: parentId ? 0 : 4, // Only main reviewComments get a rating here for simplicity
       title: parentId ? "" : "Quick Comment",
       content: content,
       createdAt: new Date().toISOString(),
@@ -359,15 +317,16 @@ export default function ReviewDetailPage({
       const data = await fetchReviews(id);
 
       console.log("this is the reviews data ", data, id);
-      // if (typeof data != "boolean" || data == true) setComments(data);
+      // if (typeof data != "boolean" || data == true) setReviewComments(data);
     };
     fetchReviewsData();
     fetchSingleProd();
+    fetchComments(params.id);
   }, []);
 
   useEffect(() => {
-    setComments(reviews);
-  }, [reviews]);
+    setComments(commentData);
+  }, [commentData]);
 
   return (
     <div className="bg-gray-50 py-12 md:py-16 min-h-screen">
@@ -442,35 +401,93 @@ export default function ReviewDetailPage({
           </div>
 
           {/* --- 2. USER REVIEWS / COMMENTS SECTION --- */}
-          {comments && (
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
-                <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
-                User Comments ({comments.length})
-              </h2>
-
-              {/* Form to Add New Comment (Main Level) */}
-              <AddCommentForm onCommentAdded={handleNewComment} />
-
-              {/* List of Comments */}
-              <div className="mt-8 space-y-6">
-                {comments.map((comment) => (
-                  <CommentItem
-                    key={comment._id}
-                    comment={comment}
-                    onCommentAdded={handleNewComment}
-                  />
-                ))}
-                {comments.length === 0 && (
-                  <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
-                    <p className="text-lg">
-                      No comments yet. Be the first to share your experience!
-                    </p>
-                  </div>
-                )}
-              </div>
+          <div className="max-w-4xl mx-auto py-8">
+            {/* --- 1. Navigation Links (The JUMP links) --- */}
+            <div className="mb-8 p-4 bg-gray-50 rounded-lg flex space-x-6 border-b border-gray-200 sticky top-0 z-10">
+              <a
+                className={`text-lg font-semibold ${
+                  showReview
+                    ? "text-emerald-600 hover:text-emerald-800 "
+                    : "text-blue-600 hover:text-blue-800"
+                } transition cursor-pointer`}
+                onClick={() => setShowReview(true)}
+              >
+                Review Comments
+              </a>
+              <a
+                className={`text-lg font-semibold ${
+                  !showReview
+                    ? "text-emerald-600 hover:text-emerald-800 "
+                    : "text-blue-600 hover:text-blue-800"
+                } transition cursor-pointer`}
+                onClick={() => setShowReview(false)}
+              >
+                General Discussion
+              </a>
             </div>
-          )}
+
+            {/* --- 2. Review Comments Section --- */}
+            {reviewComments && showReview && (
+              <div id="review-comments" className="pt-2">
+                {" "}
+                {/* Added ID for anchoring */}
+                <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+                  <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
+                  Review Comments ({reviewComments.length})
+                </h2>
+                {/* <AddCommentForm onCommentAdded={handleNewComment} /> */}
+                <div className="mt-8 space-y-6 pb-12">
+                  {" "}
+                  {/* Added padding bottom to prevent jump issues */}
+                  {reviewComments.map((comment) => (
+                    <CommentItem
+                      key={comment._id}
+                      comment={comment}
+                      onCommentAdded={handleNewComment}
+                    />
+                  ))}
+                  {reviewComments.length === 0 && (
+                    <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
+                      <p className="text-lg">No review comments yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* --- 3. General Comments Section --- */}
+            {comments && !showReview && (
+              <div id="general-comments" className="mt-12 pt-2">
+                {" "}
+                {/* Added ID for anchoring and top margin */}
+                <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+                  <MessageCircle className="w-6 h-6 mr-2 text-blue-600" />
+                  General Discussion Comments ({comments.length})
+                </h2>
+                <AddCommentForm
+                  itemID={product?.id}
+                  onCommentAdded={handleNewComment}
+                />
+                <div className="mt-8 space-y-6">
+                  {comments.map((comment) => (
+                    <CommentItem
+                      key={comment._id}
+                      comment={comment}
+                      onCommentAdded={handleNewComment}
+                    />
+                  ))}
+
+                  {comments.length === 0 && (
+                    <div className="p-8 text-center bg-white rounded-xl border border-gray-200 text-gray-600">
+                      <p className="text-lg">
+                        Be the first to start a general discussion!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
