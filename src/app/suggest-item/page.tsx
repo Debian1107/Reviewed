@@ -39,6 +39,7 @@ interface SuggestionForm {
   name: string;
   category: string;
   description: string;
+  imageFile?: File | null;
 }
 
 // Mock categories for the dropdown
@@ -81,8 +82,10 @@ export default function SuggestItemPage() {
     name: "",
     category: "tech",
     description: "",
+    imageFile: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
   const handleInputChange = (
@@ -105,18 +108,29 @@ export default function SuggestItemPage() {
       setSubmitMessage("Please fill out all required fields.");
       return;
     }
+    const formData2 = new FormData();
+    formData2.append("name", formData.name);
+    formData2.append("category", formData.category);
+    formData2.append("description", formData.description);
+    if (imageFile) {
+      formData2.append("image", imageFile);
+    }
+    // if (imageFile) {
+    //   formData["imageFile"] = imageFile;
+    // }
 
     setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/items", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        // Send the form data (name, category, description)
-        body: JSON.stringify(formData),
+        body: formData2,
       });
+      // headers: {
+      //   "Content-Type": "application/json",
+      // },
+      // // Send the form data (name, category, description)
+      // body: JSON.stringify(formData),
 
       const result = await response.json();
 
@@ -125,6 +139,7 @@ export default function SuggestItemPage() {
         setSubmitMessage(
           `🎉 Success! Item '${result.data.name}' has been suggested and added to the index.`
         );
+        setImageFile(null);
 
         // Reset form fields
         setFormData({
@@ -250,6 +265,32 @@ export default function SuggestItemPage() {
                   placeholder="Tell us a little about the item, or provide an official link to help us verify it."
                 />
               </div>
+            </div>
+
+            {/* 5. Image Upload */}
+            <div>
+              <label
+                htmlFor="image"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Upload an Image (optional)
+              </label>
+              <input
+                id="image"
+                name="image"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 
+               focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition text-base"
+                disabled={isSubmitting}
+              />
+              {imageFile && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Selected file:{" "}
+                  <span className="font-medium">{imageFile.name}</span>
+                </p>
+              )}
             </div>
 
             {/* Submit Button */}

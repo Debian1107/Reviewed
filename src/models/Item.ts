@@ -7,6 +7,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
  * This represents a product, service, or place that can be reviewed.
  */
 export interface IItem extends Document {
+  _id: Types.ObjectId; // MongoDB ObjectId
   id: string; // The unique slug or ID used in URLs (e.g., 'iphone-17-pro')
   name: string; // The display name of the item
   description: string; // The display name of the item

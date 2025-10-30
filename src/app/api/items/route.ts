@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import Item, { IItem } from "@/models/Item"; // Import IItem and Item model
-import Review from "@/models/Review";
+import Review, { IReview } from "@/models/Review";
 import dbConnect from "@/lib/mongodb"; // your db connection file
-import mongoose from "mongoose";
-import { Types } from "mongoose";
+import cloudinary, { uploadToCloudinary } from "@/lib/cloudinary";
 
 // Ensure the database connection is established at the module level (Next.js Edge) or in the handler.
 // We'll keep it in the handler for robustness.
@@ -112,7 +111,7 @@ export async function GET(request: Request) {
 
       // Fill in missing ratings (0–5) with zero counts
       const ratingBreakdown = Array.from({ length: 6 }, (_, i) => {
-        const found = breakdown.find((b) => b._id === i);
+        const found = breakdown.find((b: IReview) => b._id === i);
         return { rating: i, count: found ? found.count : 0 };
       }).reverse(); // optional → order 5 → 0
 
@@ -162,7 +161,7 @@ export async function GET(request: Request) {
           },
         },
       ]);
-      const items = await Item.find().lean();
+      const items = await Item.find().lean<IItem[]>();
 
       const statsMap = reviewStats.reduce((acc, stat) => {
         acc[stat.itemId.toString()] = stat;
@@ -200,18 +199,18 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await dbConnect();
-    const body = await request.json();
+    // const body = await request.json();
 
     // Map suggestion fields (from your front-end) to Item model fields
-    const { name, category, description } = body;
+    // const { name, category, description, imageFile } = body;
+    const formData = await request.formData();
+    const name = formData.get("name") as string;
+    const category = formData.get("category") as string;
+    const description = formData.get("description") as string;
+    const imageFile = formData.get("image") as Blob | null;
+    let imageUrl: string = "";
 
     // Convert 'name' to a URL-friendly slug for the 'id' field
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "") // Remove non-alphanumeric chars (except space and dash)
-      .trim()
-      .replace(/\s+/g, "-"); // Replace spaces with dashes
-
     // Ensure required fields are present
     if (!name || !category || !description) {
       return NextResponse.json(
@@ -221,6 +220,34 @@ export async function POST(request: Request) {
         },
         { status: 400 }
       );
+    }
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "") // Remove non-alphanumeric chars (except space and dash)
+      .trim()
+      .replace(/\s+/g, "-"); // Replace spaces with dashes
+
+    // check if the slug already exists
+    const checkSlug = await Item.find({ id: slug });
+    if (checkSlug.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Item with name '${name}' already exists.`,
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+
+    // const imageFile = body.get("image") as File | null;
+    if (imageFile) {
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // ✅ Await upload properly
+      const uploadResult: any = await uploadToCloudinary(buffer, "items");
+      imageUrl = uploadResult.secure_url;
+      console.log("✅ Uploaded to Cloudinary:", imageUrl);
     }
 
     // Check if an item with this slug already exists (avoid duplicates)
@@ -240,6 +267,8 @@ export async function POST(request: Request) {
       id: slug,
       name,
       category,
+      image: imageUrl,
+      description,
       // Tags could optionally be extracted from the description or name here
       tags: [category, ...name.toLowerCase().split(/\s+/).slice(0, 3)],
       reviewCount: 0,
