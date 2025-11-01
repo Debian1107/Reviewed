@@ -3,6 +3,7 @@ import Item, { IItem } from "@/models/Item"; // Import IItem and Item model
 import Review, { IReview } from "@/models/Review";
 import dbConnect from "@/lib/mongodb"; // your db connection file
 import cloudinary, { uploadToCloudinary } from "@/lib/cloudinary";
+import aiCheckItem from "@/lib/aicheck";
 
 // Ensure the database connection is established at the module level (Next.js Edge) or in the handler.
 // We'll keep it in the handler for robustness.
@@ -142,7 +143,7 @@ export async function GET(request: Request) {
           totalReviews: summary.totalReviews || 0,
           ratingBreakdown,
         };
-      console.log("itemsList", itemsList);
+      // console.log("itemsList", itemsList);
     } else {
       const reviewStats = await Review.aggregate([
         {
@@ -180,7 +181,7 @@ export async function GET(request: Request) {
         };
       });
 
-      console.log("itemsList", itemsList);
+      // console.log("itemsList", itemsList);
     }
     return NextResponse.json({ success: true, data: itemsList });
   } catch (error) {
@@ -239,6 +240,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // check with ai if the item being uploaded is correct or not
+    const isValidItem = await aiCheckItem(
+      `name:${name}, description:${description}, category:${category}`
+    );
+
+    if (!isValidItem.isValid) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `The item '${name}' failed the AI validation check. because: ${isValidItem.reason}`,
+        },
+        { status: 400 }
+      );
+    }
     // const imageFile = body.get("image") as File | null;
     if (imageFile) {
       const arrayBuffer = await imageFile.arrayBuffer();
