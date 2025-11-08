@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 // import mongoose from "mongoose";
 // import Review from "@/models/Review"; // adjust path
-import Comment from "@/models/Comment";
+import Comment, { CommentType } from "@/models/Comment";
+import Like from "@/models/Like";
 import "@/lib/mongodb"; // your db connection file
 import dbConnect from "@/lib/mongodb";
 import Item from "@/models/Item";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path as needed
+import mongoose, { Document } from "mongoose";
 
 await dbConnect();
-
+type CommentLean = Omit<CommentType, keyof Document> & {
+  _id: mongoose.Types.ObjectId;
+};
 // GET /api/comments
 export async function GET(request: Request) {
   try {
@@ -17,6 +21,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const commentid: string | null = searchParams.get("id");
     const itemId: string | null = searchParams.get("itemid");
+
+    const session = await getServerSession(authOptions);
+
     let comments;
     if (commentid) {
       const commentidData = await Comment.findOne({ id: commentid });
@@ -40,11 +47,27 @@ export async function GET(request: Request) {
         );
       }
       // console.log(itemId, "  Product Instance:", productInst);
-      comments = await Comment.find({ product: productInst._id })
+      // 1️⃣ Get all comments
+      const comments_inst = await Comment.find({ product: productInst._id })
         .populate("user", "name")
-        .sort({
-          createdAt: -1,
-        });
+        .sort({ createdAt: -1 })
+        .lean<CommentLean[]>();
+
+      // 2️⃣ Get all likes by current user for these comments
+      const likedComments = await Like.find({
+        user: session?.user.id,
+        comment: { $in: comments_inst.map((c) => c._id) },
+      })
+        .select("comment")
+        .lean();
+
+      // 3️⃣ Add flag
+      const likedSet = new Set(likedComments.map((l) => l.comment.toString()));
+
+      comments = comments_inst.map((c) => ({
+        ...c,
+        isLikedByCurrentUser: likedSet.has(c._id.toString()),
+      }));
     }
     // .populate("likes") // populate likes if needed
 

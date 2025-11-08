@@ -12,6 +12,7 @@ interface ItemState {
 
 interface ReviewState {
   reviews: Comment[];
+  trendingReviews: Comment[];
   isLoading: boolean;
   error: string | null;
   lastFetched: number | null; // Timestamp to track when data was last loaded
@@ -58,6 +59,7 @@ interface ReviewActions {
     itemdid: string,
     force?: boolean
   ) => Promise<Comment[] | boolean>;
+  fetchTrendingReviews: (force?: boolean) => Promise<Comment[] | boolean>;
   searchReviews: (query: string, force?: boolean) => Promise<void>;
   postReviews: (data: postReviewsData) => Promise<boolean>;
   getSingleReviews: (
@@ -77,6 +79,18 @@ interface CommentsActions {
     id: string | null,
     force?: boolean
   ) => Promise<ProductData>;
+  resetError: () => void;
+}
+
+interface LikeStore {
+  isLoading: boolean;
+  error: string | null;
+  lastFetched: number | null;
+  postLike: (
+    comment: string | null,
+    review: string | null,
+    force?: boolean
+  ) => Promise<void>;
   resetError: () => void;
 }
 
@@ -231,6 +245,7 @@ export const useItemStore = create<ItemStore>((set, get) => ({
 export const useReviewStore = create<ReviewsStore>((set, get) => ({
   // --- Initial State ---
   reviews: [],
+  trendingReviews: [],
   isLoading: false,
   error: null,
   lastFetched: null,
@@ -277,6 +292,66 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
 
       set({
         reviews: result.data as Comment[],
+        isLoading: false,
+        error: null,
+        lastFetched: Date.now(),
+      });
+      return result.data as Comment[];
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred.";
+      set({
+        isLoading: false,
+        error: message,
+      });
+      console.error("Failed to fetch items:", err);
+      return false;
+    }
+  },
+
+  fetchTrendingReviews: async (force = false) => {
+    const { isLoading, lastFetched } = get();
+    console.log(
+      "in fetch trending reviews store ---> ",
+      isLoading,
+      lastFetched
+    );
+
+    // Prevent duplicate fetches if already loading
+    if (isLoading) return false;
+
+    // Check for stale data, skip fetch if recent data exists and not forced
+    const now = Date.now();
+    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
+
+    if (!force && !isStale && get().reviews.length > 0) {
+      console.log("Using cached reviews data.", get().reviews);
+      return true;
+    }
+
+    set({ isLoading: true, error: null });
+    console.log("in fetch items -4");
+
+    try {
+      const response = await fetch("/api/reviews?trending=1", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("fetch reviews -", result);
+
+      set({
+        trendingReviews: result.data as Comment[],
         isLoading: false,
         error: null,
         lastFetched: Date.now(),
@@ -639,4 +714,57 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
   //     console.error("Failed to fetch items:", err);
   //   }
   // },
+}));
+
+export const useLikeStore = create<LikeStore>((set, get) => ({
+  // --- Initial State ---
+  isLoading: false,
+  error: null,
+  lastFetched: null,
+
+  // --- Actions ---
+  resetError: () => set({ error: null }),
+
+  postLike: async (comment = null, review = null, force = false) => {
+    const { isLoading, lastFetched } = get();
+
+    // Prevent duplicate fetches if already loading
+    if (isLoading) return null;
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await fetch(`/api/likes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          comment: comment,
+          review: review,
+        }),
+      });
+      set({ isLoading: false });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      const data = result?.data;
+      console.log("get single item -", data);
+      return data;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred.";
+      set({
+        isLoading: false,
+        error: message,
+      });
+      console.error("Failed to add like:", err);
+    }
+  },
 }));

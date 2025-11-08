@@ -7,7 +7,12 @@ import Image from "next/image";
 import { JSX } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useItemStore, useReviewStore, useCommentStore } from "@/utils/store";
+import {
+  useItemStore,
+  useReviewStore,
+  useCommentStore,
+  useLikeStore,
+} from "@/utils/store";
 import { Comment, ProductData, Item } from "@/types/global";
 import { useSession } from "next-auth/react";
 
@@ -47,6 +52,7 @@ const FullRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
 interface CommentProps {
   comment: Comment;
   isReply?: boolean;
+  commentType: "review" | "general";
   onCommentAdded: (
     parentId: number | undefined,
     content: string,
@@ -58,23 +64,24 @@ const CommentItem: React.FC<CommentProps> = ({
   comment,
   isReply = false,
   onCommentAdded,
+  commentType = "review",
 }) => {
   const [isReplying, setIsReplying] = useState(false);
+  const { postLike } = useLikeStore();
+  const [liked, setLiked] = useState<boolean>(
+    comment?.isLikedByCurrentUser || false
+  );
   // const [replyContent, setReplyContent] = useState("");
 
   // Placeholder function for handling like/delete
   const handleAction = (action: string) => {
     console.log(`${action} clicked for comment ${comment.id}`);
+    if (action === "like") {
+      if (commentType === "review") postLike(null, comment._id);
+      else postLike(comment._id, null);
+      setLiked(!liked);
+    }
   };
-
-  // const handleReplySubmit = (e: FormEvent) => {
-  //   e.preventDefault();
-  //   if (replyContent.trim()) {
-  //     onCommentAdded(comment.id, replyContent);
-  //     setReplyContent("");
-  //     setIsReplying(false);
-  //   }
-  // };
 
   return (
     <div
@@ -118,7 +125,8 @@ const CommentItem: React.FC<CommentProps> = ({
           onClick={() => handleAction("like")}
           className="flex items-center text-sm text-emerald-600 hover:text-emerald-700 transition"
         >
-          <ThumbsUp className="w-4 h-4 mr-1" /> {comment.likes}
+          <ThumbsUp fill={liked ? "green" : "white"} className="w-4 h-4 mr-1" />{" "}
+          {comment.likes}
         </button>
         <button
           onClick={() => setIsReplying(!isReplying)}
@@ -149,6 +157,7 @@ const CommentItem: React.FC<CommentProps> = ({
               key={reply?.id}
               comment={reply}
               isReply={true}
+              commentType={commentType}
               onCommentAdded={onCommentAdded}
             />
           ))}
@@ -324,6 +333,8 @@ export default function ReviewDetailPage({
       content: content,
       createdAt: new Date().toISOString(),
       likes: 0,
+      name: "",
+      likesCount: 0,
       replies: [],
     };
 
@@ -489,6 +500,7 @@ export default function ReviewDetailPage({
                     <CommentItem
                       key={comment._id}
                       comment={comment}
+                      commentType="review"
                       onCommentAdded={handleNewComment}
                     />
                   ))}
@@ -519,6 +531,7 @@ export default function ReviewDetailPage({
                     <CommentItem
                       key={comment._id}
                       comment={comment}
+                      commentType="general"
                       onCommentAdded={handleNewComment}
                     />
                   ))}

@@ -260,7 +260,7 @@ export async function POST(request: Request) {
       const buffer = Buffer.from(arrayBuffer);
 
       // ✅ Await upload properly
-      const uploadResult: any = await uploadToCloudinary(buffer, "items");
+      const uploadResult = await uploadToCloudinary(buffer, "items");
       imageUrl = uploadResult.secure_url;
       console.log("✅ Uploaded to Cloudinary:", imageUrl);
     }

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 // import mongoose from "mongoose";
 import Review from "@/models/Review"; // adjust path
-import Like from "@/models/Like";
+// import Like from "@/models/Like";
 import "@/lib/mongodb"; // your db connection file
+import Like from "@/models/Like";
 import dbConnect from "@/lib/mongodb";
 import Item from "@/models/Item";
 import { getServerSession } from "next-auth";
@@ -15,6 +16,48 @@ export async function GET(request: Request) {
     // Fetch all reviews with user details
     const { searchParams } = new URL(request.url);
     const itemid: string | null = searchParams.get("id");
+    const trendingReviews: string | null = searchParams.get("trending");
+    const session = await getServerSession(authOptions);
+
+    if (trendingReviews) {
+      const reviews = await Review.aggregate([
+        {
+          $lookup: {
+            from: "items",
+            localField: "itemId",
+            foreignField: "_id",
+            as: "item",
+          },
+        },
+        { $unwind: "$item" },
+        {
+          $addFields: {
+            id: "$item.id",
+            name: "$item.name",
+            likesCount: { $size: "$likes" },
+          },
+        },
+        {
+          $project: {
+            item: 0, // remove nested item field
+            likes: 0, // optional
+          },
+        },
+        {
+          $sort: { likesCount: -1, createdAt: -1 },
+        },
+        { $limit: 5 },
+      ]);
+
+      // Populate user and item info
+      await Review.populate(reviews, [
+        { path: "user", select: "name" },
+        { path: "itemId", select: "name id" },
+      ]);
+
+      return NextResponse.json({ success: true, data: reviews });
+    }
+
     if (!itemid) {
       return NextResponse.json(
         { success: false, message: "Missing itemid parameter." },
@@ -33,10 +76,27 @@ export async function GET(request: Request) {
       .populate("user", "name ") // populate user fields
       .sort({
         createdAt: -1,
-      });
+      })
+      .lean();
+
+    // 2️⃣ Get all likes by current user for these comments
+    const likedComments = await Like.find({
+      user: session?.user.id,
+      review: { $in: reviews.map((c) => c._id) },
+    })
+      .select("review")
+      .lean();
+
+    // 3️⃣ Add flag
+    const likedSet = new Set(likedComments.map((l) => l.review.toString()));
+
+    const modified_reviews = reviews.map((c) => ({
+      ...c,
+      isLikedByCurrentUser: likedSet.has(c._id.toString()),
+    }));
     // .populate("likes") // populate likes if needed
 
-    return NextResponse.json({ success: true, data: reviews });
+    return NextResponse.json({ success: true, data: modified_reviews });
   } catch (error) {
     console.error("Error fetching reviews:", error);
     return NextResponse.json(
@@ -62,8 +122,8 @@ export async function POST(request: Request) {
     }
 
     // ✅ Access user details
-    const userEmail = session.user.email; // default available field
-    const userName = session.user.name; // default available field
+    // const userEmail = session.user.email; // default available field
+    // const userName = session.user.name; // default available field
     const body = await request.json();
 
     // Ensure required fields are present
@@ -108,6 +168,20 @@ export async function POST(request: Request) {
     const createdReview = await Review.findById(newReview._id)
       .populate("user", "name email")
       .exec();
+
+    console.log("Current item rating data:", itemIdData);
+    const averageRating = itemIdData.averageRating || 0;
+    const totalReviews = (itemIdData.reviewCount || 0) + 1;
+    itemIdData.averageRating =
+      (averageRating * (totalReviews - 1) + rating) / totalReviews;
+    itemIdData.reviewCount = totalReviews;
+    console.log(
+      "Updated item rating:",
+      averageRating,
+      itemIdData.reviewCount,
+      totalReviews
+    );
+    await itemIdData.save();
 
     return NextResponse.json(
       {

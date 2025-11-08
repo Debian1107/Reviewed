@@ -30,7 +30,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   const pathname = req.nextUrl.pathname;
 
   // Apply custom logic only to /api routes
-  if (pathname.startsWith("/api")) {
+  if (pathname.startsWith("/api") && !pathname.startsWith("/api/auth")) {
     const ratelimit = await rateLimit(req);
     if (!ratelimit.ok) {
       return new NextResponse(JSON.stringify({ error: "Too many requests" }), {

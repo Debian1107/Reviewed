@@ -34,8 +34,11 @@ interface Comment {
   title: string;
   content: string;
   createdAt: string;
-  likes: number;
+  likes: number; // details of the likes in array form
   replies: Comment[];
+  isLikedByCurrentUser?: boolean; // whether the current user liked this comment
+  name?: string; // for the name of the item that has the comment
+  likesCount?: number; // total number of likes
 }
 
 export type { Item, ProductData, Comment };

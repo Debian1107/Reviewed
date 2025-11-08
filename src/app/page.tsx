@@ -4,7 +4,7 @@
 import { Search, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useItemStore } from "@/utils/store";
+import { useItemStore, useReviewStore } from "@/utils/store";
 import { Item } from "@/types/global";
 import { ItemCard } from "@/components/card";
 import { itemTypes } from "@/utils/constants";
@@ -44,29 +44,30 @@ export default function HomePage() {
   // const [error, setError] = useState<string>("");
   const [searchItem, setSearchItem] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Item[]>([]);
+  const { searchItems } = useItemStore();
+  const { fetchTrendingReviews, trendingReviews } = useReviewStore();
   // const [product, setProduct] = useState<ProductData>();
-  const [searchLoading, setSearchLoading] = useState<boolean>(false);
-  const { getSingleItem, searchItems } = useItemStore();
+  // const [searchLoading, setSearchLoading] = useState<boolean>(false);
   // const { postReviews } = useReviewStore();
   // const searchParams = useSearchParams();
   // const id: string | null = searchParams.get("id"); // →
   // const { data: session, status } = useSession();
-  const handleSearchSelection = (item: Item) => {
-    setSearchResults([]);
-    // setProduct(item);
-  };
+  // const handleSearchSelection = (item: Item) => {
+  //   setSearchResults([]);
+  //   // setProduct(item);
+  // };
 
   useEffect(() => {
     if (!searchItem.trim()) {
       setSearchResults([]);
       return;
     }
-    setSearchLoading(true);
+    // setSearchLoading(true);
     const controller = new AbortController();
     const delayDebounce = setTimeout(() => {
       searchItems(searchItem)
         .then((res) => {
-          setSearchLoading(false);
+          // setSearchLoading(false);
           setSearchResults(res);
         })
         .catch((err) => {
@@ -79,6 +80,11 @@ export default function HomePage() {
       controller.abort(); // cancel old request
     };
   }, [searchItem]);
+
+  useEffect(() => {
+    fetchTrendingReviews();
+  }, [fetchTrendingReviews]);
+
   return (
     <main className="bg-gray-50 ">
       {/* ------------------------------------------------------------------ */}
@@ -173,80 +179,37 @@ export default function HomePage() {
 
           {/* Placeholder for 3 featured review cards */}
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Featured Review Card 1 */}
-            <div className="p-6 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-              <Star
-                className="w-5 h-5 text-yellow-500 inline-block mr-1"
-                fill="currentColor"
-              />
-              <span className="text-sm font-semibold text-gray-700">
-                4.8/5 (1,200 reviews)
-              </span>
-              <h3 className="text-xl font-bold text-gray-900 mt-2 mb-3">
-                iPhone 16 Pro Battery Life
-              </h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                &quot;The battery life on the 16 Pro is a game changer. I can
-                easily go two full days without needing a charge, something no
-                previous iPhone could manage...&quot;
-              </p>
-              <Link
-                href="/review/iphone-16-pro"
-                className="text-emerald-600 font-medium hover:text-emerald-700"
-              >
-                Read Full Review →
-              </Link>
-            </div>
-
-            {/* Featured Review Card 2 */}
-            <div className="p-6 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-              <Star
-                className="w-5 h-5 text-yellow-500 inline-block mr-1"
-                fill="currentColor"
-              />
-              <span className="text-sm font-semibold text-gray-700">
-                3.1/5 (450 reviews)
-              </span>
-              <h3 className="text-xl font-bold text-gray-900 mt-2 mb-3">
-                Airbus A380 Economy Seat
-              </h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                &quot;While the A380 is quiet, the seat pitch in the last row is
-                absolutely brutal for anyone over 6 feet tall. Avoid seat 88A at
-                all costs...&quot;
-              </p>
-              <Link
-                href="/review/a380-economy-seat"
-                className="text-emerald-600 font-medium hover:text-emerald-700"
-              >
-                Read Full Review →
-              </Link>
-            </div>
-
-            {/* Featured Review Card 3 */}
-            <div className="p-6 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-              <Star
-                className="w-5 h-5 text-yellow-500 inline-block mr-1"
-                fill="currentColor"
-              />
-              <span className="text-sm font-semibold text-gray-700">
-                1.9/5 (2,100 reviews)
-              </span>
-              <h3 className="text-xl font-bold text-gray-900 mt-2 mb-3">
-                I-95 Southbound (Richmond, VA)
-              </h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                &quot;The road surface is deplorable. Potholes large enough to
-                swallow a small car. Maintenance is non-existent. A terrible,
-                nerve-wracking commute...&quot;
-              </p>
-              <Link
-                href="/review/i95-southbound"
-                className="text-emerald-600 font-medium hover:text-emerald-700"
-              >
-                Read Full Review →
-              </Link>
-            </div>
+            {trendingReviews.map((review) => {
+              return (
+                <div
+                  key={review._id}
+                  className="p-6 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition"
+                >
+                  <Star
+                    className="w-5 h-5 text-yellow-500 inline-block mr-1"
+                    fill="currentColor"
+                  />
+                  <span className="text-sm font-semibold text-gray-700">
+                    {review.rating}/5 ({review.likesCount} likes)
+                  </span>
+                  <h3 className="text-xl font-bold text-gray-900 mt-2 mb-3">
+                    {review.name}
+                  </h3>
+                  <h3 className="text-base  text-gray-900 mt-2 mb-3">
+                    {review.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                    &quot;{review.content}&quot;
+                  </p>
+                  <Link
+                    href={`/reviews/${review.id}`}
+                    className="text-emerald-600 font-medium hover:text-emerald-700"
+                  >
+                    Read Full Review →
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

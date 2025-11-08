@@ -80,7 +80,5 @@ const ItemSchema = new Schema<IItem>(
   }
 );
 
-// --- Model Export ---
-
 export default mongoose.models.Item ||
   mongoose.model<IItem>("Item", ItemSchema);
