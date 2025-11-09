@@ -5,6 +5,7 @@ import { ProductData, Item, Comment } from "@/types/global";
 // Define the structure of the store's state
 interface ItemState {
   items: Item[];
+  singleItemDict: { [key: string]: Item };
   isLoading: boolean;
   error: string | null;
   lastFetched: number | null; // Timestamp to track when data was last loaded
@@ -12,6 +13,7 @@ interface ItemState {
 
 interface ReviewState {
   reviews: Comment[];
+  reviewsDict: { [key: string]: Comment[] };
   trendingReviews: Comment[];
   isLoading: boolean;
   error: string | null;
@@ -20,6 +22,7 @@ interface ReviewState {
 
 interface CommentState {
   comments: Comment[];
+  commentsDict: { [key: string]: Comment[] }; // comments organized by parent ID
   isLoading: boolean;
   error: string | null;
   lastFetched: number | null; // Timestamp to track when data was last loaded
@@ -105,6 +108,7 @@ const STALE_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 export const useItemStore = create<ItemStore>((set, get) => ({
   // --- Initial State ---
   items: [],
+  singleItemDict: {},
   isLoading: false,
   error: null,
   lastFetched: null,
@@ -200,13 +204,13 @@ export const useItemStore = create<ItemStore>((set, get) => ({
     if (isLoading) return null;
 
     // Check for stale data, skip fetch if recent data exists and not forced
-    // const now = Date.now();
-    // const isStale = !lastFetched || now - lastFetched > STALE_TIME;
+    const now = Date.now();
+    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
-    // if (!force && !isStale && get().items.length > 0) {
-    //   console.log("Using cached item data.");
-    //   return;
-    // }
+    if (!force && !isStale && id && get().singleItemDict[id]) {
+      console.log("Using cached item data.");
+      return get().singleItemDict[id];
+    }
 
     set({ isLoading: true, error: null });
 
@@ -229,6 +233,12 @@ export const useItemStore = create<ItemStore>((set, get) => ({
       const result = await response.json();
       const data = result?.data;
       console.log("get single item -", data);
+      set({
+        singleItemDict: {
+          ...get().singleItemDict,
+          [id as string]: data,
+        },
+      });
       return data;
     } catch (err) {
       const message =
@@ -245,6 +255,7 @@ export const useItemStore = create<ItemStore>((set, get) => ({
 export const useReviewStore = create<ReviewsStore>((set, get) => ({
   // --- Initial State ---
   reviews: [],
+  reviewsDict: {},
   trendingReviews: [],
   isLoading: false,
   error: null,
@@ -264,7 +275,7 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
     const now = Date.now();
     const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
-    if (!force && !isStale && get().reviews.length > 0) {
+    if (!force && !isStale && get().reviewsDict[itemid]?.length > 0) {
       console.log("Using cached reviews data.", get().reviews);
       return true;
     }
@@ -292,6 +303,10 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
 
       set({
         reviews: result.data as Comment[],
+        reviewsDict: {
+          ...get().reviewsDict, // keep previous entries
+          [itemid]: result.data as Comment[], // add or update this one
+        },
         isLoading: false,
         error: null,
         lastFetched: Date.now(),
@@ -511,6 +526,7 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
 export const useCommentStore = create<CommentsStore>((set, get) => ({
   // --- Initial State ---
   comments: [],
+  commentsDict: {},
   isLoading: false,
   error: null,
   lastFetched: null,
@@ -520,7 +536,7 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
 
   fetchComments: async (itemid, force = false) => {
     const { isLoading, lastFetched } = get();
-    console.log("in fetch reviews store ---> ", isLoading, lastFetched);
+    console.log("in fetch comments store ---> ", isLoading, lastFetched);
 
     // Prevent duplicate fetches if already loading
     if (isLoading || !itemid) return false;
@@ -529,8 +545,8 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
     const now = Date.now();
     const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
-    if (!force && !isStale && get().comments.length > 0) {
-      console.log("Using cached reviews data.", get().comments);
+    if (!force && !isStale && get().commentsDict[itemid]?.length > 0) {
+      console.log("Using cached comments data.", get().comments);
       return true;
     }
 
@@ -557,6 +573,10 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
 
       set({
         comments: result.data as Comment[],
+        commentsDict: {
+          ...get().commentsDict, // keep previous entries
+          [itemid]: result.data as Comment[], // add or update this one
+        },
         isLoading: false,
         error: null,
         lastFetched: Date.now(),

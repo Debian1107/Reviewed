@@ -2,7 +2,7 @@
 const rateMap = new Map<string, { count: number; lastRequest: number }>();
 
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 10; // 10 requests/minute per user
+const RATE_LIMIT_MAX = 60; // 10 requests/minute per user
 
 export async function rateLimit(req: Request) {
   const ip = req.headers.get("x-forwarded-for") || "unknown";

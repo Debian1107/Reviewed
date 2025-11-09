@@ -5,7 +5,8 @@ import { useState, FormEvent, useEffect } from "react";
 import { Star, MessageCircle, User, Clock, ThumbsUp, Send } from "lucide-react";
 import Image from "next/image";
 import { JSX } from "react";
-import Link from "next/link";
+// import Link from "next/link";
+import { Loader } from "@/components/loading";
 import { useRouter } from "next/navigation";
 import {
   useItemStore,
@@ -311,7 +312,7 @@ export default function ReviewDetailPage({
   const [comments, setComments] = useState<Comment[]>([]);
   const [product, setProduct] = useState<ProductData>();
   const [showReview, setShowReview] = useState<boolean>(true);
-  const { getSingleItem } = useItemStore();
+  const { getSingleItem, isLoading } = useItemStore();
   const router = useRouter();
 
   // Dynamic function to handle adding a new comment or reply
@@ -385,6 +386,8 @@ export default function ReviewDetailPage({
     setComments(commentData);
   }, [commentData]);
 
+  if (isLoading) return <Loader loadingText="Loading product details" />;
+
   return (
     <div className="bg-gray-50 py-12 md:py-16 min-h-screen">
       {product && (
@@ -395,7 +398,7 @@ export default function ReviewDetailPage({
               {/* Product Image */}
               <div className="flex-shrink-0 mb-6 lg:mb-0">
                 <Image
-                  src={product?.imageUrl || "/img/pog.jpg"}
+                  src={product?.imageUrl || "/no-image.png"}
                   alt={product.name}
                   width={200}
                   height={200}
@@ -421,14 +424,24 @@ export default function ReviewDetailPage({
                     Reviews
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    router.push("/submit-review?id=" + product.id);
-                  }}
-                  className="mt-8 px-5 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
-                >
-                  Review this product
-                </button>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      router.push("/submit-review?id=" + product.id);
+                    }}
+                    className="mt-8 px-5 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
+                  >
+                    Review this product
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push("/submit-review?id=" + product.id);
+                    }}
+                    className="mt-8 px-5 py-2 text-emerald-600 bg-white border border-emerald-600 font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
+                  >
+                    View In-depth Review
+                  </button>
+                </div>
               </div>
 
               {/* Rating Breakdown */}
