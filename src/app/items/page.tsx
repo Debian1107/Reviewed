@@ -1,23 +1,9 @@
 // app/products/page.tsx
 "use client";
 
-import {
-  useState,
-  useMemo,
-  ChangeEvent,
-  FormEvent,
-  useEffect,
-  use,
-} from "react";
+import { useState, useMemo, ChangeEvent, FormEvent, useEffect } from "react";
 import {
   Search,
-  Zap,
-  Car,
-  MonitorPlay,
-  Plane,
-  Truck,
-  ListFilter,
-  Star,
   PlusCircle, // Added for the new card
 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +12,7 @@ import { ItemCard } from "@/components/card";
 // import { Item } from "@/types/global";
 import { useSearchParams } from "next/navigation";
 import { itemTypes } from "@/utils/constants";
+import CategoryDropdown from "@/components/dropdown";
 
 const CATEGORIES = itemTypes;
 
@@ -175,47 +162,55 @@ export default function ProductsPage() {
         </form>
 
         {/* --- CATEGORIES & SORTING --- */}
-        <div className="lg:flex lg:justify-between lg:items-center mb-8 p-4 bg-white rounded-xl shadow-lg border border-gray-100">
-          {/* Category Navigation (Horizontal Scroll on Mobile) */}
-          <div className="flex  gap-2 h-[40px] lg:gap-4 overflow-x-auto pb-2 lg:pb-0">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setSelectedCategory(cat.value)}
-                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${
-                  selectedCategory === cat.value
-                    ? "bg-emerald-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <cat.icon className="w-4 h-4 mr-2" />
-                {cat.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8 p-5 bg-gradient-to-r from-white via-emerald-50 to-white rounded-2xl shadow-md border border-gray-200">
+          {/* Category Navigation */}
+          <CategoryDropdown
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            CATEGORIES={CATEGORIES}
+          />
 
           {/* Sort By Dropdown */}
-          <div className="mt-4 lg:mt-0 flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <label
               htmlFor="sortBy"
-              className="text-sm font-medium text-gray-700"
+              className="text-sm font-medium text-gray-600"
             >
               Sort By:
             </label>
-            <select
-              id="sortBy"
-              value={sortBy}
-              onChange={(e) =>
-                setSortBy(
-                  e.target.value as "latest" | "highest_rating" | "most_reviews"
-                )
-              }
-              className="py-2 px-3 border border-gray-300 bg-white rounded-lg text-sm focus:ring-emerald-500 focus:border-emerald-500 appearance-none pr-8"
-            >
-              <option value="most_reviews">Most Reviews</option>
-              <option value="highest_rating">Highest Rated</option>
-              <option value="latest">Recently Added</option>
-            </select>
+            <div className="relative">
+              <select
+                id="sortBy"
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value as
+                      | "latest"
+                      | "highest_rating"
+                      | "most_reviews"
+                  )
+                }
+                className="py-2.5 pl-4 pr-10 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none"
+              >
+                <option value="most_reviews">Most Reviews</option>
+                <option value="highest_rating">Highest Rated</option>
+                <option value="latest">Recently Added</option>
+              </select>
+              {/* Custom dropdown arrow */}
+              <svg
+                className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
           </div>
         </div>
 

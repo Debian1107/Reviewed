@@ -1,3 +1,7 @@
+import { ForwardRefExoticComponent } from "react";
+import { LucideProps } from "lucide-react";
+import { RefAttributes } from "react";
+
 interface Item {
   _id: string;
   id: string; // slug
@@ -41,4 +45,12 @@ interface Comment {
   likesCount?: number; // total number of likes
 }
 
-export type { Item, ProductData, Comment };
+interface itemCategoriesTypes {
+  value: string;
+  label: string;
+  icon: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >;
+}
+
+export type { Item, ProductData, Comment, itemCategoriesTypes };

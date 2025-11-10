@@ -30,9 +30,11 @@ import {
   Shield,
   Globe,
   ShoppingBag,
+  GlobeIcon,
 } from "lucide-react";
 
 export const itemTypes = [
+  { value: "all", label: "All Categories", icon: GlobeIcon },
   { value: "tech", label: "Tech & Gadgets", icon: Zap },
   { value: "auto", label: "Automotive", icon: Car },
   { value: "media", label: "Movies & Media", icon: MonitorPlay },
