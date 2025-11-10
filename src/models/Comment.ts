@@ -9,6 +9,7 @@ export interface CommentType extends Document {
   likes: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
+  replies?: CommentType[];
 }
 
 const commentSchema = new mongoose.Schema(
@@ -48,6 +49,14 @@ const commentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+commentSchema.virtual("replies", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "parentComment",
+});
+commentSchema.set("toObject", { virtuals: true });
+commentSchema.set("toJSON", { virtuals: true });
 
 const Comment = models.Comment || model("Comment", commentSchema);
 

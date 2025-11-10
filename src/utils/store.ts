@@ -41,7 +41,7 @@ interface postCommentsData {
   userid: string | null | undefined;
   itemId: string | undefined;
   content: string;
-  parentid?: number | null;
+  parentid?: string | null;
   rating: number | null;
 }
 
@@ -74,6 +74,10 @@ interface ReviewActions {
 
 interface CommentsActions {
   fetchComments: (
+    itemdid: string,
+    force?: boolean
+  ) => Promise<Comment[] | boolean>;
+  getCommentReplies: (
     itemdid: string,
     force?: boolean
   ) => Promise<Comment[] | boolean>;
@@ -208,7 +212,7 @@ export const useItemStore = create<ItemStore>((set, get) => ({
     const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
     if (!force && !isStale && id && get().singleItemDict[id]) {
-      console.log("Using cached item data.");
+      console.log("Using cached item data. to get single item ", id);
       return get().singleItemDict[id];
     }
 
@@ -276,7 +280,12 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
     const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
     if (!force && !isStale && get().reviewsDict[itemid]?.length > 0) {
-      console.log("Using cached reviews data.", get().reviews);
+      console.log("Using cached reviews data.", itemid, get().reviews);
+      set({
+        reviews: get().reviewsDict[itemid],
+        isLoading: false,
+        error: null,
+      });
       return true;
     }
 
@@ -437,13 +446,13 @@ export const useReviewStore = create<ReviewsStore>((set, get) => ({
     if (isLoading) return;
 
     // Check for stale data, skip fetch if recent data exists and not forced
-    const now = Date.now();
-    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
+    // const now = Date.now();
+    // const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
-    if (!force && !isStale && get().reviews.length > 0) {
-      console.log("Using cached item data.");
-      return;
-    }
+    // if (!force && !isStale && get().reviews.length > 0) {
+    //   console.log("Using cached item data.");
+    //   return;
+    // }
 
     set({ isLoading: true, error: null });
 
@@ -546,7 +555,12 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
     const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
     if (!force && !isStale && get().commentsDict[itemid]?.length > 0) {
-      console.log("Using cached comments data.", get().comments);
+      console.log("Using cached comments data.", itemid, get().comments);
+      set({
+        comments: get().commentsDict[itemid],
+        isLoading: false,
+        error: null,
+      });
       return true;
     }
 
@@ -609,6 +623,7 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
           itemId: data.itemId,
           content: data.content,
           rating: data.rating,
+          parentid: data.parentid || null,
         }),
       });
 
@@ -619,14 +634,13 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
         );
       }
 
-      const result = await response.json();
+      // const result = await response.json();
 
       set({
         isLoading: false,
         error: null,
-        lastFetched: Date.now(),
       });
-      return result;
+      return true;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "An unknown error occurred.";
@@ -687,53 +701,52 @@ export const useCommentStore = create<CommentsStore>((set, get) => ({
     }
   },
 
-  // getSingleReviews: async (id: string | null, force = false) => {
-  //   const { isLoading, lastFetched } = get();
+  getCommentReplies: async (parentId: string, force = false) => {
+    const { isLoading, lastFetched } = get();
 
-  //   // Prevent duplicate fetches if already loading
-  //   if (isLoading) return null;
+    // Prevent duplicate fetches if already loading
+    if (isLoading) return null;
 
-  //   // Check for stale data, skip fetch if recent data exists and not forced
-  //   const now = Date.now();
-  //   const isStale = !lastFetched || now - lastFetched > STALE_TIME;
+    // Check for stale data, skip fetch if recent data exists and not forced
+    const now = Date.now();
+    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
 
-  //   // if (!force && !isStale && get().items.length > 0) {
-  //   //   console.log("Using cached item data.");
-  //   //   return;
-  //   // }
+    // if (!force && !isStale && get().items.length > 0) {
+    //   console.log("Using cached item data.");
+    //   return;
+    // }
 
-  //   set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null });
 
-  //   try {
-  //     const response = await fetch("/api/items?id=" + id, {
-  //       method: "GET",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //     });
-  //     set({ isLoading: false });
+    try {
+      const response = await fetch("/api/comments?parentComment=" + parentId, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      set({ isLoading: false });
 
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(
-  //         errorData.message || `HTTP error! status: ${response.status}`
-  //       );
-  //     }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
 
-  //     const result = await response.json();
-  //     const data = result.data;
-  //     if (data && data.length > 0) return data[0];
-  //     return null;
-  //   } catch (err) {
-  //     const message =
-  //       err instanceof Error ? err.message : "An unknown error occurred.";
-  //     set({
-  //       isLoading: false,
-  //       error: message,
-  //     });
-  //     console.error("Failed to fetch items:", err);
-  //   }
-  // },
+      const result = await response.json();
+      const data = result.data;
+      return data || [];
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred.";
+      set({
+        isLoading: false,
+        error: message,
+      });
+      console.error("Failed to fetch items:", err);
+    }
+  },
 }));
 
 export const useLikeStore = create<LikeStore>((set, get) => ({

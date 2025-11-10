@@ -2,7 +2,15 @@
 "use client";
 
 import { useState, FormEvent, useEffect } from "react";
-import { Star, MessageCircle, User, Clock, ThumbsUp, Send } from "lucide-react";
+import {
+  Star,
+  MessageCircle,
+  User,
+  Clock,
+  ThumbsUp,
+  Send,
+  Reply,
+} from "lucide-react";
 import Image from "next/image";
 import { JSX } from "react";
 // import Link from "next/link";
@@ -16,6 +24,7 @@ import {
 } from "@/utils/store";
 import { Comment, ProductData, Item } from "@/types/global";
 import { useSession } from "next-auth/react";
+import { type } from "os";
 
 // --- COMPONENTS ---
 const RatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
@@ -49,16 +58,44 @@ const FullRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
   </div>
 );
 
+function addReplyRecursive(
+  comments: Comment[],
+  parentId: string,
+  newReply: Comment[]
+): Comment[] {
+  return comments.map((comment) => {
+    if (comment._id === parentId) {
+      // ✅ Found the parent: append the new reply
+      return {
+        ...comment,
+        replies: [...(comment.replies || []), ...newReply],
+      };
+    }
+
+    // ✅ If this comment has replies, check inside them recursively
+    if (comment.replies && comment.replies.length > 0) {
+      return {
+        ...comment,
+        replies: addReplyRecursive(comment.replies, parentId, newReply),
+      };
+    }
+
+    // ✅ No match here — return unchanged
+    return comment;
+  });
+}
+
 // 2. Individual Comment/Review Component
 interface CommentProps {
   comment: Comment;
   isReply?: boolean;
   commentType: "review" | "general";
   onCommentAdded: (
-    parentId: number | undefined,
+    parentId: string | undefined,
     content: string,
     rating: number | null
   ) => void;
+  setComments: React.Dispatch<React.SetStateAction<Comment[]>>;
 }
 
 const CommentItem: React.FC<CommentProps> = ({
@@ -66,9 +103,12 @@ const CommentItem: React.FC<CommentProps> = ({
   isReply = false,
   onCommentAdded,
   commentType = "review",
+  setComments,
 }) => {
   const [isReplying, setIsReplying] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
   const { postLike } = useLikeStore();
+  const { getCommentReplies } = useCommentStore();
   const [liked, setLiked] = useState<boolean>(
     comment?.isLikedByCurrentUser || false
   );
@@ -82,6 +122,20 @@ const CommentItem: React.FC<CommentProps> = ({
       else postLike(comment._id, null);
       setLiked(!liked);
     }
+  };
+
+  const fetchShowReplies = async (parentCommentId: string | null) => {
+    setShowReplies(true);
+    console.log("Fetch and show replies for comment ID:", parentCommentId);
+    // Implement fetching logic if needed
+    if (!parentCommentId) return;
+    const replies = await getCommentReplies(parentCommentId);
+
+    if (typeof replies === "boolean") return;
+
+    setComments((prevComments) => {
+      return addReplyRecursive(prevComments, parentCommentId || "", replies);
+    });
   };
 
   return (
@@ -135,6 +189,15 @@ const CommentItem: React.FC<CommentProps> = ({
         >
           <MessageCircle className="w-4 h-4 mr-1" /> Reply
         </button>
+
+        {isReply && !showReplies && (
+          <button
+            onClick={() => fetchShowReplies(comment._id)}
+            className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition"
+          >
+            <Reply className="w-4 h-4 mr-1" /> Show Replies
+          </button>
+        )}
         {/* Optional: Delete button shown only for the user's own reviewComments */}
         {/* <button onClick={() => handleAction('delete')} className="flex items-center text-sm text-red-500 hover:text-red-700 transition ml-auto">
                     <Trash2 className="w-4 h-4 mr-1" />
@@ -144,7 +207,8 @@ const CommentItem: React.FC<CommentProps> = ({
       {/* Reply Form */}
       {isReplying && (
         <AddCommentForm
-          parentId={comment.id}
+          itemID={comment.product}
+          parentId={comment._id}
           isReplyForm={true}
           onCommentAdded={onCommentAdded}
         />
@@ -155,11 +219,12 @@ const CommentItem: React.FC<CommentProps> = ({
         <div className="ml-6 border-l pl-4 border-gray-300 mt-4 space-y-3">
           {comment.replies.map((reply) => (
             <CommentItem
-              key={reply?.id}
+              key={reply?._id}
               comment={reply}
               isReply={true}
               commentType={commentType}
               onCommentAdded={onCommentAdded}
+              setComments={setComments}
             />
           ))}
         </div>
@@ -170,11 +235,11 @@ const CommentItem: React.FC<CommentProps> = ({
 
 // 3. Add Comment Form Component (for main reviews and replies)
 interface AddCommentFormProps {
-  parentId?: number;
+  parentId?: string;
   isReplyForm?: boolean;
   itemID?: string;
   onCommentAdded: (
-    parentId: number | undefined,
+    parentId: string | undefined,
     content: string,
     rating: number | null
   ) => void;
@@ -200,6 +265,7 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
       itemId: itemID,
       rating: commentRating || null,
     };
+    alert(`Submitting comment: ${itemID} ${JSON.stringify(commentData)}`);
     if (content.trim()) {
       const postingComment = await postComments(commentData);
       if (postingComment) {
@@ -314,44 +380,37 @@ export default function ReviewDetailPage({
   const [showReview, setShowReview] = useState<boolean>(true);
   const { getSingleItem, isLoading } = useItemStore();
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   // Dynamic function to handle adding a new comment or reply
   const handleNewComment = (
-    parentId: number | undefined,
+    parentId: string | undefined,
     content: string,
     rating: number | null
   ) => {
-    const newComment: Comment = {
-      _id: Math.random().toString(36).substring(2, 15),
-      id: Date.now(),
-      userId: "currentUser", // Replace with actual logged-in user
-      user: {
-        name: "LoggedInUser",
+    const newComment: Comment[] = [
+      {
+        _id: Math.random().toString(36).substring(2, 15),
+        id: Date.now(),
+        userId: "currentUser", // Replace with actual logged-in user
+        user: {
+          name: session?.user?.name || "Anonymous User",
+        },
+        item: product ? product.id : "unknown",
+        rating: parentId ? 0 : rating || 0, // Only main reviewComments get a rating here for simplicity
+        title: parentId ? "" : "",
+        content: content,
+        createdAt: new Date().toISOString(),
+        likes: 0,
+        name: "",
+        likesCount: 0,
+        replies: [],
       },
-      item: product ? product.id : "unknown",
-      rating: parentId ? 0 : rating || 0, // Only main reviewComments get a rating here for simplicity
-      title: parentId ? "" : "Quick Comment",
-      content: content,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      name: "",
-      likesCount: 0,
-      replies: [],
-    };
+    ];
 
     setComments((prevComments) => {
-      if (parentId) {
-        // Handle reply
-        return prevComments.map((c) => {
-          if (c.id === parentId) {
-            return { ...c, replies: [...c.replies, newComment] };
-          }
-          return c;
-        });
-      } else {
-        // Handle new main comment
-        return [newComment, ...prevComments];
-      }
+      console.log("Adding new comment/reply: ", parentId);
+      return addReplyRecursive(prevComments, parentId || "", newComment);
     });
   };
 
@@ -429,7 +488,7 @@ export default function ReviewDetailPage({
                     onClick={() => {
                       router.push("/submit-review?id=" + product.id);
                     }}
-                    className="mt-8 px-5 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
+                    className="mt-8 px-5 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-white hover:text-emerald-600 border-emerald-600 border  transition flex items-center text-sm"
                   >
                     Review this product
                   </button>
@@ -437,7 +496,7 @@ export default function ReviewDetailPage({
                     onClick={() => {
                       router.push("/submit-review?id=" + product.id);
                     }}
-                    className="mt-8 px-5 py-2 text-emerald-600 bg-white border border-emerald-600 font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center text-sm"
+                    className="mt-8 px-5 py-2 text-emerald-600 bg-white border border-emerald-600 font-semibold rounded-lg hover:bg-emerald-700 hover:text-white transition flex items-center text-sm"
                   >
                     View In-depth Review
                   </button>
@@ -515,6 +574,7 @@ export default function ReviewDetailPage({
                       comment={comment}
                       commentType="review"
                       onCommentAdded={handleNewComment}
+                      setComments={setComments}
                     />
                   ))}
                   {reviewComments.length === 0 && (
@@ -546,6 +606,7 @@ export default function ReviewDetailPage({
                       comment={comment}
                       commentType="general"
                       onCommentAdded={handleNewComment}
+                      setComments={setComments}
                     />
                   ))}
 

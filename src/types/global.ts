@@ -34,6 +34,7 @@ interface Comment {
     name: string;
   };
   item: string;
+  product?: string; // alias for item
   rating: number;
   title: string;
   content: string;
@@ -43,6 +44,7 @@ interface Comment {
   isLikedByCurrentUser?: boolean; // whether the current user liked this comment
   name?: string; // for the name of the item that has the comment
   likesCount?: number; // total number of likes
+  parentComment?: string | null; // for replies
 }
 
 interface itemCategoriesTypes {
