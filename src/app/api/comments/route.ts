@@ -27,6 +27,7 @@ export async function GET(request: Request) {
 
     let comments;
     if (commentid) {
+      // incase a single comment is requested
       const commentidData = await Comment.findOne({ id: commentid });
       if (!commentidData) {
         return NextResponse.json(
@@ -38,19 +39,35 @@ export async function GET(request: Request) {
       comments = await Comment.find({ commentid: commentidData }).sort({
         createdAt: -1,
       });
-      // return NextResponse.json({ success: true, data: comments });
     } else if (parentComment) {
-      // const commentidData = await Comment.findOne({ parentComment: parentComment });
-      // if (!commentidData) {
-      //   return NextResponse.json(
-      //     { success: false, message: "Invalid commentid: No item found." },
-      //     { status: 400 }
-      //   );
-      // }
+      // fetch replies to a comment
+      const comments_inst = await Comment.find({
+        parentComment: parentComment,
+      })
+        .populate("user", "name")
+        .sort({
+          createdAt: -1,
+        })
+        .lean<CommentLean[]>();
 
-      comments = await Comment.find({ parentComment: parentComment }).sort({
-        createdAt: -1,
-      });
+      // 2️⃣ Collect ALL comment IDs (for likes lookup)
+      const allCommentIds = comments_inst.flatMap((c) => [
+        c._id,
+        ...(c.replies?.map((r) => r._id) || []),
+      ]);
+
+      const likedComments = await Like.find({
+        user: session?.user.id,
+        comment: { $in: allCommentIds },
+      })
+        .select("comment")
+        .lean();
+
+      const likedSet = new Set(likedComments.map((l) => l.comment.toString()));
+      comments = comments_inst.map((c) => ({
+        ...c,
+        isLikedByCurrentUser: likedSet.has(c._id.toString()),
+      }));
       if (!comments) {
         return NextResponse.json(
           { success: false, message: "No replies comments found" },
@@ -58,6 +75,7 @@ export async function GET(request: Request) {
         );
       }
     } else {
+      // fetch comments for a product/item
       const productInst = await Item.findOne({ id: itemId });
       if (!productInst) {
         return NextResponse.json(
@@ -65,7 +83,6 @@ export async function GET(request: Request) {
           { status: 400 }
         );
       }
-      // console.log(itemId, "  Product Instance:", productInst);
       // 1️⃣ Get all comments
       const comments_inst = await Comment.find({
         product: productInst._id,

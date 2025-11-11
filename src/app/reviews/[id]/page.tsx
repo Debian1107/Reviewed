@@ -183,14 +183,16 @@ const CommentItem: React.FC<CommentProps> = ({
           <ThumbsUp fill={liked ? "green" : "white"} className="w-4 h-4 mr-1" />{" "}
           {comment.likes}
         </button>
-        <button
-          onClick={() => setIsReplying(!isReplying)}
-          className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition"
-        >
-          <MessageCircle className="w-4 h-4 mr-1" /> Reply
-        </button>
+        {commentType != "review" && (
+          <button
+            onClick={() => setIsReplying(!isReplying)}
+            className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition"
+          >
+            <MessageCircle className="w-4 h-4 mr-1" /> Reply
+          </button>
+        )}
 
-        {isReply && !showReplies && (
+        {isReply && !showReplies && !comment?.replies?.length && (
           <button
             onClick={() => fetchShowReplies(comment._id)}
             className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition"
@@ -207,7 +209,7 @@ const CommentItem: React.FC<CommentProps> = ({
       {/* Reply Form */}
       {isReplying && (
         <AddCommentForm
-          itemID={comment.product}
+          itemID={comment.product || comment?.itemId}
           parentId={comment._id}
           isReplyForm={true}
           onCommentAdded={onCommentAdded}
@@ -284,27 +286,6 @@ const AddCommentForm: React.FC<AddCommentFormProps> = ({
     if (ratingValue === 1 && commentRating === 1) setCommentRating(0);
     else setCommentRating(ratingValue);
   };
-
-  // if (!isLoggedIn) {
-  //   return (
-  //     <div
-  //       className={`p-5 mt-6 border-2 border-dashed border-gray-200 rounded-xl text-center ${
-  //         isReplyForm ? "mt-3 bg-white" : "bg-gray-50"
-  //       }`}
-  //     >
-  //       <p className="text-gray-600">
-  //         Please{" "}
-  //         <Link
-  //           href="/login"
-  //           className="text-emerald-600 font-semibold hover:underline"
-  //         >
-  //           log in
-  //         </Link>{" "}
-  //         to add a comment or reply.
-  //       </p>
-  //     </div>
-  //   );
-  // }
 
   return (
     <form
@@ -396,7 +377,7 @@ export default function ReviewDetailPage({
         user: {
           name: session?.user?.name || "Anonymous User",
         },
-        item: product ? product.id : "unknown",
+        itemId: product ? product.id : "unknown",
         rating: parentId ? 0 : rating || 0, // Only main reviewComments get a rating here for simplicity
         title: parentId ? "" : "",
         content: content,
@@ -541,7 +522,7 @@ export default function ReviewDetailPage({
                 } transition cursor-pointer`}
                 onClick={() => setShowReview(true)}
               >
-                Review Comments
+                Reviews
               </a>
               <a
                 className={`text-lg font-semibold ${
@@ -562,7 +543,7 @@ export default function ReviewDetailPage({
                 {/* Added ID for anchoring */}
                 <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
                   <MessageCircle className="w-6 h-6 mr-2 text-emerald-600" />
-                  Review Comments ({reviewComments.length})
+                  Review ({reviewComments.length})
                 </h2>
                 {/* <AddCommentForm onCommentAdded={handleNewComment} /> */}
                 <div className="mt-8 space-y-6 pb-12">

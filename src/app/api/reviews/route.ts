@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const itemid: string | null = searchParams.get("id");
     const trendingReviews: string | null = searchParams.get("trending");
+    const userReviews: string | null = searchParams.get("userReviews");
     const session = await getServerSession(authOptions);
 
     if (trendingReviews) {
@@ -56,8 +57,19 @@ export async function GET(request: Request) {
       ]);
 
       return NextResponse.json({ success: true, data: reviews });
+    } else if (userReviews) {
+      if (!session || !session.user) {
+        return NextResponse.json(
+          { success: false, message: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      const reviews = await Review.find({ user: session.user.id })
+        .populate("itemId", "name id") // populate item fields
+        .sort({ createdAt: -1 })
+        .lean();
+      return NextResponse.json({ success: true, data: reviews });
     }
-
     if (!itemid) {
       return NextResponse.json(
         { success: false, message: "Missing itemid parameter." },

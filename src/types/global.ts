@@ -33,7 +33,7 @@ interface Comment {
   user: {
     name: string;
   };
-  item: string;
+  itemId: string;
   product?: string; // alias for item
   rating: number;
   title: string;
@@ -55,4 +55,14 @@ interface itemCategoriesTypes {
   >;
 }
 
-export type { Item, ProductData, Comment, itemCategoriesTypes };
+interface UserDataType {
+  id: string;
+  name: string;
+  email: string;
+  dob: string;
+  profilePicture: string;
+  location: string;
+  user_verified: boolean;
+}
+
+export type { Item, ProductData, Comment, itemCategoriesTypes, UserDataType };

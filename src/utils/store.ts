@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { ProductData, Item, Comment } from "@/types/global";
 // Define the structure of an Item based on your Mongoose schema/mock data
-
+import { UserDataType } from "@/types/global";
 // Define the structure of the store's state
 interface ItemState {
   items: Item[];
@@ -44,6 +44,29 @@ interface postCommentsData {
   parentid?: string | null;
   rating: number | null;
 }
+
+type UserStore = {
+  userDetails: UserDetails | null;
+  isLoading: boolean;
+  error: string | null;
+  lastFetched: number | null;
+  resetError: () => void;
+  fetchUserDetails: (
+    userId: string,
+    force?: boolean
+  ) => Promise<UserDetails | null>;
+  updateUserDetails: (
+    userId: string,
+    userData: UserDataType
+  ) => Promise<UserDetails | null>;
+};
+
+type UserDetails = {
+  id: string;
+  name: string;
+  email: string;
+  // Add other user properties as needed
+};
 
 // Define the actions (functions to update the state)
 interface ItemActions {
@@ -798,6 +821,104 @@ export const useLikeStore = create<LikeStore>((set, get) => ({
         error: message,
       });
       console.error("Failed to add like:", err);
+    }
+  },
+}));
+
+export const useUserStore = create<UserStore>((set, get) => ({
+  // --- Initial State ---
+  userDetails: null,
+  isLoading: false,
+  error: null,
+  lastFetched: null,
+
+  // --- Actions ---
+  resetError: () => set({ error: null }),
+
+  fetchUserDetails: async (userId: string, force = false) => {
+    const { isLoading, lastFetched } = get();
+
+    // Prevent duplicate fetches if already loading
+    if (isLoading) return null;
+
+    // Check for stale data, skip fetch if recent data exists and not forced
+    const now = Date.now();
+    const isStale = !lastFetched || now - lastFetched > STALE_TIME;
+
+    if (!force && !isStale && get().userDetails) {
+      return get().userDetails;
+    }
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await fetch(`/api/auth/userdetails}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      set({
+        userDetails: result.data,
+        isLoading: false,
+        error: null,
+        lastFetched: Date.now(),
+      });
+      return result.data;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred.";
+      set({
+        isLoading: false,
+        error: message,
+      });
+      console.error("Failed to fetch user details:", err);
+    }
+  },
+
+  updateUserDetails: async (userId, userData) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await fetch(`/api/users?id=${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+      set({
+        userDetails: result.data,
+        isLoading: false,
+        error: null,
+      });
+      return result.data;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred.";
+      set({
+        isLoading: false,
+        error: message,
+      });
+      console.error("Failed to update user details:", err);
     }
   },
 }));
